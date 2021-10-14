@@ -3,7 +3,6 @@ package geom
 import (
 	"database/sql/driver"
 	"fmt"
-	"unsafe"
 
 	"github.com/peterstace/simplefeatures/rtree"
 )
@@ -46,7 +45,7 @@ func (m MultiLineString) Type() GeometryType {
 
 // AsGeometry converts this MultiLineString into a Geometry.
 func (m MultiLineString) AsGeometry() Geometry {
-	return Geometry{TypeMultiLineString, unsafe.Pointer(&m)}
+	return Geometry{m}
 }
 
 // NumLineStrings gives the number of LineString elements in the

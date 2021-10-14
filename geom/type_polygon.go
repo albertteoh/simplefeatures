@@ -4,7 +4,6 @@ import (
 	"database/sql/driver"
 	"fmt"
 	"math"
-	"unsafe"
 
 	"github.com/peterstace/simplefeatures/rtree"
 )
@@ -25,7 +24,12 @@ import (
 //
 // 4. The holes must be fully inside the outer ring.
 //
-type Polygon struct {
+type Polygon interface {
+	Geometryer
+	ForceCoordinatesType(newCType CoordinatesType) Polygon
+}
+
+type polygon struct {
 	rings []LineString
 	ctype CoordinatesType
 }
@@ -36,7 +40,7 @@ type Polygon struct {
 // common coordinate type of its rings.
 func NewPolygon(rings []LineString, opts ...ConstructorOption) (Polygon, error) {
 	if len(rings) == 0 {
-		return Polygon{}, nil
+		return polygon{}, nil
 	}
 
 	ctype := DimXYZM
@@ -51,11 +55,11 @@ func NewPolygon(rings []LineString, opts ...ConstructorOption) (Polygon, error) 
 	ctorOpts := newOptionSet(opts)
 	if err := validatePolygon(rings, ctorOpts); err != nil {
 		if ctorOpts.omitInvalid {
-			return Polygon{}, nil
+			return polygon{}, nil
 		}
-		return Polygon{}, err
+		return polygon{}, err
 	}
-	return Polygon{rings, ctype}, nil
+	return polygon{rings, ctype}, nil
 }
 
 func validatePolygon(rings []LineString, opts ctorOptionSet) error {
@@ -158,18 +162,18 @@ func validatePolygon(rings []LineString, opts ctorOptionSet) error {
 }
 
 // Type returns the GeometryType for a Polygon
-func (p Polygon) Type() GeometryType {
+func (p polygon) Type() GeometryType {
 	return TypePolygon
 }
 
 // AsGeometry converts this Polygon into a Geometry.
-func (p Polygon) AsGeometry() Geometry {
-	return Geometry{TypePolygon, unsafe.Pointer(&p)}
+func (p polygon) AsGeometry() Geometry {
+	return Geometry{p}
 }
 
 // ExteriorRing gives the exterior ring of the polygon boundary. If the polygon
 // is empty, then it returns the empty LineString.
-func (p Polygon) ExteriorRing() LineString {
+func (p polygon) ExteriorRing() LineString {
 	if p.IsEmpty() {
 		return LineString{}.ForceCoordinatesType(p.ctype)
 	}
@@ -177,12 +181,12 @@ func (p Polygon) ExteriorRing() LineString {
 }
 
 // NumInteriorRings gives the number of interior rings in the polygon boundary.
-func (p Polygon) NumInteriorRings() int {
+func (p polygon) NumInteriorRings() int {
 	return max(0, len(p.rings)-1)
 }
 
 // NumRings gives the total number of rings: ExternalRing + NumInteriorRings().
-func (p Polygon) NumRings() int {
+func (p polygon) NumRings() int {
 	if p.IsEmpty() {
 		return 0
 	}
@@ -192,7 +196,7 @@ func (p Polygon) NumRings() int {
 // InteriorRingN gives the nth (zero indexed) interior ring in the polygon
 // boundary. It will panic if n is out of bounds with respect to the number of
 // interior rings.
-func (p Polygon) InteriorRingN(n int) LineString {
+func (p polygon) InteriorRingN(n int) LineString {
 	// Outer ring is at the 0th position.
 	if n == -1 {
 		panic("n out of range")
@@ -201,18 +205,18 @@ func (p Polygon) InteriorRingN(n int) LineString {
 }
 
 // AsText returns the WKT (Well Known Text) representation of this geometry.
-func (p Polygon) AsText() string {
+func (p polygon) AsText() string {
 	return string(p.AppendWKT(nil))
 }
 
 // AppendWKT appends the WKT (Well Known Text) representation of this geometry
 // to the input byte slice.
-func (p Polygon) AppendWKT(dst []byte) []byte {
+func (p polygon) AppendWKT(dst []byte) []byte {
 	dst = appendWKTHeader(dst, "POLYGON", p.ctype)
 	return p.appendWKTBody(dst)
 }
 
-func (p Polygon) appendWKTBody(dst []byte) []byte {
+func (p polygon) appendWKTBody(dst []byte) []byte {
 	if p.IsEmpty() {
 		return appendWKTEmpty(dst)
 	}
@@ -229,33 +233,33 @@ func (p Polygon) appendWKTBody(dst []byte) []byte {
 // IsSimple returns true if this geometry contains no anomalous geometry
 // points, such as self intersection or self tangency. Because Polygons are
 // always simple, this method always returns true.
-func (p Polygon) IsSimple() bool {
+func (p polygon) IsSimple() bool {
 	return true
 }
 
 // IsEmpty returns true if and only if this Polygon is the empty Polygon. The
 // empty Polygon doesn't have any rings and doesn't enclose any area.
-func (p Polygon) IsEmpty() bool {
+func (p polygon) IsEmpty() bool {
 	// Rings are not allowed to be empty, so we don't have to check IsEmpty on
 	// each ring.
 	return len(p.rings) == 0
 }
 
 // Envelope returns the Envelope that most tightly surrounds the geometry.
-func (p Polygon) Envelope() Envelope {
+func (p polygon) Envelope() Envelope {
 	return p.ExteriorRing().Envelope()
 }
 
 // Boundary returns the spatial boundary of this Polygon. For non-empty
 // Polygons, this is the MultiLineString collection containing all of the
 // rings.
-func (p Polygon) Boundary() MultiLineString {
+func (p polygon) Boundary() MultiLineString {
 	return NewMultiLineString(p.rings).Force2D()
 }
 
 // Value implements the database/sql/driver.Valuer interface by returning the
 // WKB (Well Known Binary) representation of this Geometry.
-func (p Polygon) Value() (driver.Value, error) {
+func (p polygon) Value() (driver.Value, error) {
 	return p.AsBinary(), nil
 }
 
@@ -268,18 +272,18 @@ func (p Polygon) Value() (driver.Value, error) {
 // ConstructionOptions are needed, then the value should be scanned into a byte
 // slice and then UnmarshalWKB called manually (passing in the
 // ConstructionOptions as desired).
-func (p *Polygon) Scan(src interface{}) error {
+func (p *polygon) Scan(src interface{}) error {
 	return scanAsType(src, p, TypePolygon)
 }
 
 // AsBinary returns the WKB (Well Known Text) representation of the geometry.
-func (p Polygon) AsBinary() []byte {
+func (p polygon) AsBinary() []byte {
 	return p.AppendWKB(nil)
 }
 
 // AppendWKB appends the WKB (Well Known Text) representation of the geometry
 // to the input slice.
-func (p Polygon) AppendWKB(dst []byte) []byte {
+func (p polygon) AppendWKB(dst []byte) []byte {
 	marsh := newWKBMarshaller(dst)
 	marsh.writeByteOrder()
 	marsh.writeGeomType(TypePolygon, p.ctype)
@@ -293,13 +297,13 @@ func (p Polygon) AppendWKB(dst []byte) []byte {
 
 // ConvexHull returns the geometry representing the smallest convex geometry
 // that contains this geometry.
-func (p Polygon) ConvexHull() Geometry {
+func (p polygon) ConvexHull() Geometry {
 	return convexHull(p.AsGeometry())
 }
 
 // MarshalJSON implements the encoding/json.Marshaller interface by encoding
 // this geometry as a GeoJSON geometry object.
-func (p Polygon) MarshalJSON() ([]byte, error) {
+func (p polygon) MarshalJSON() ([]byte, error) {
 	var dst []byte
 	dst = append(dst, `{"type":"Polygon","coordinates":`...)
 	dst = appendGeoJSONSequences(dst, p.Coordinates())
@@ -309,7 +313,7 @@ func (p Polygon) MarshalJSON() ([]byte, error) {
 
 // Coordinates returns the coordinates of the rings making up the Polygon
 // (external ring first, then internal rings after).
-func (p Polygon) Coordinates() []Sequence {
+func (p polygon) Coordinates() []Sequence {
 	coords := make([]Sequence, len(p.rings))
 	for i, r := range p.rings {
 		coords[i] = r.Coordinates()
@@ -318,7 +322,7 @@ func (p Polygon) Coordinates() []Sequence {
 }
 
 // TransformXY transforms this Polygon into another Polygon according to fn.
-func (p Polygon) TransformXY(fn func(XY) XY, opts ...ConstructorOption) (Polygon, error) {
+func (p polygon) TransformXY(fn func(XY) XY, opts ...ConstructorOption) (Polygon, error) {
 	n := len(p.rings)
 	transformed := make([]LineString, n)
 	for i, r := range p.rings {
@@ -328,7 +332,7 @@ func (p Polygon) TransformXY(fn func(XY) XY, opts ...ConstructorOption) (Polygon
 			opts...,
 		)
 		if err != nil {
-			return Polygon{}, wrapTransformed(err)
+			return polygon{}, wrapTransformed(err)
 		}
 	}
 	poly, err := NewPolygon(transformed, opts...)
@@ -369,7 +373,7 @@ func SignedArea(o *areaOptionSet) {
 }
 
 // Area of a Polygon is the area enclosed by the polygon's boundary.
-func (p Polygon) Area(opts ...AreaOption) float64 {
+func (p polygon) Area(opts ...AreaOption) float64 {
 	os := newAreaOptionSet(opts)
 	totalArea := signedAreaOfLinearRing(p.ExteriorRing(), os.transform)
 	if !os.signed {
@@ -406,7 +410,7 @@ func signedAreaOfLinearRing(lr LineString, transform func(XY) XY) float64 {
 
 // Centroid returns the polygon's centroid point. If returns an empty Point if
 // the Polygon is empty.
-func (p Polygon) Centroid() Point {
+func (p polygon) Centroid() Point {
 	if p.IsEmpty() {
 		return NewEmptyPoint(DimXY)
 	}
@@ -466,7 +470,7 @@ func triangleArea2(pt1, pt2, pt3 XY) float64 {
 }
 
 // AsMultiPolygon is a helper that converts this Polygon into a MultiPolygon.
-func (p Polygon) AsMultiPolygon() MultiPolygon {
+func (p polygon) AsMultiPolygon() MultiPolygon {
 	var polys []Polygon
 	if !p.IsEmpty() {
 		polys = []Polygon{p}
@@ -482,37 +486,37 @@ func (p Polygon) AsMultiPolygon() MultiPolygon {
 
 // Reverse in the case of Polygon outputs the coordinates of each ring in reverse order,
 // but note the order of the inner rings is unchanged.
-func (p Polygon) Reverse() Polygon {
+func (p polygon) Reverse() Polygon {
 	reversed := make([]LineString, len(p.rings))
 	for i := range reversed {
 		reversed[i] = p.rings[i].Reverse()
 	}
-	return Polygon{reversed, p.ctype}
+	return polygon{reversed, p.ctype}
 }
 
 // CoordinatesType returns the CoordinatesType used to represent points making
 // up the geometry.
-func (p Polygon) CoordinatesType() CoordinatesType {
+func (p polygon) CoordinatesType() CoordinatesType {
 	return p.ctype
 }
 
 // ForceCoordinatesType returns a new Polygon with a different CoordinatesType. If a dimension
 // is added, then new values are populated with 0.
-func (p Polygon) ForceCoordinatesType(newCType CoordinatesType) Polygon {
+func (p polygon) ForceCoordinatesType(newCType CoordinatesType) Polygon {
 	flatRings := make([]LineString, len(p.rings))
 	for i := range p.rings {
 		flatRings[i] = p.rings[i].ForceCoordinatesType(newCType)
 	}
-	return Polygon{flatRings, newCType}
+	return polygon{flatRings, newCType}
 }
 
 // Force2D returns a copy of the Polygon with Z and M values removed.
-func (p Polygon) Force2D() Polygon {
+func (p polygon) Force2D() Polygon {
 	return p.ForceCoordinatesType(DimXY)
 }
 
 // PointOnSurface returns a Point that lies inside the Polygon.
-func (p Polygon) PointOnSurface() Point {
+func (p polygon) PointOnSurface() Point {
 	pt, _ := pointOnAreaSurface(p)
 	return pt
 }
@@ -520,18 +524,18 @@ func (p Polygon) PointOnSurface() Point {
 // ForceCW returns the equivalent Polygon that has its exterior ring in a
 // clockwise orientation and any inner rings in a counter-clockwise
 // orientation.
-func (p Polygon) ForceCW() Polygon {
+func (p polygon) ForceCW() Polygon {
 	return p.forceOrientation(true)
 }
 
 // ForceCCW returns the equivalent Polygon that has its exterior ring in a
 // counter-clockwise orientation and any inner rings in a clockwise
 // orientation.
-func (p Polygon) ForceCCW() Polygon {
+func (p polygon) ForceCCW() Polygon {
 	return p.forceOrientation(false)
 }
 
-func (p Polygon) forceOrientation(forceCW bool) Polygon {
+func (p polygon) forceOrientation(forceCW bool) Polygon {
 	orientedRings := make([]LineString, len(p.rings))
 	for i, ring := range p.rings {
 		alreadyCW := signedAreaOfLinearRing(ring, nil) < 0
@@ -541,10 +545,10 @@ func (p Polygon) forceOrientation(forceCW bool) Polygon {
 			orientedRings[i] = ring.Reverse()
 		}
 	}
-	return Polygon{orientedRings, p.ctype}
+	return polygon{orientedRings, p.ctype}
 }
 
-func (p Polygon) controlPoints() int {
+func (p polygon) controlPoints() int {
 	var sum int
 	for _, r := range p.rings {
 		sum += r.Coordinates().Length()
@@ -554,7 +558,7 @@ func (p Polygon) controlPoints() int {
 
 // DumpCoordinates returns the points making up the rings in a Polygon as a
 // Sequence.
-func (p Polygon) DumpCoordinates() Sequence {
+func (p polygon) DumpCoordinates() Sequence {
 	var n int
 	for _, r := range p.rings {
 		n += r.Coordinates().Length()
@@ -570,7 +574,7 @@ func (p Polygon) DumpCoordinates() Sequence {
 }
 
 // Summary returns a text summary of the Polygon following a similar format to https://postgis.net/docs/ST_Summary.html.
-func (p Polygon) Summary() string {
+func (p polygon) Summary() string {
 	numPoints := p.DumpCoordinates().Length()
 
 	var ringSuffix string
@@ -583,6 +587,6 @@ func (p Polygon) Summary() string {
 }
 
 // String returns the string representation of the Polygon.
-func (p Polygon) String() string {
+func (p polygon) String() string {
 	return p.Summary()
 }

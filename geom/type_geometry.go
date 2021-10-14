@@ -8,7 +8,7 @@ import (
 // Geometryer represents a generic geometry.
 type Geometryer interface {
 	Type() GeometryType
-	NumPoints() int
+	AsGeometry() Geometry
 }
 
 // Geometry wraps a Geometryer interface.
