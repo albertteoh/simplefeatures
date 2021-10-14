@@ -9,6 +9,7 @@ import (
 type Geometryer interface {
 	Type() GeometryType
 	AsGeometry() Geometry
+	AsText() string
 }
 
 // Geometry wraps a Geometryer interface.
@@ -116,78 +117,94 @@ func (g Geometry) check(gtype GeometryType) {
 // AsGeometryCollection returns the geometry as a GeometryCollection. It panics
 // if the geometry is not a GeometryCollection.
 func (g Geometry) AsGeometryCollection() GeometryCollection {
-	g.check(TypeGeometryCollection)
-	if g.ptr == nil {
-		// Special case so that the zero Geometry value is interpreted as an
-		// empty GeometryCollection.
-		return GeometryCollection{}
+	//g.check(TypeGeometryCollection)
+	//if g.ptr == nil {
+	//	// Special case so that the zero Geometry value is interpreted as an
+	//	// empty GeometryCollection.
+	//	return GeometryCollection{}
+	//}
+	//return *(*GeometryCollection)(g.ptr)
+	if v, ok := g.Geometryer.(GeometryCollection); ok {
+		return v
 	}
-	return *(*GeometryCollection)(g.ptr)
+	panic("geometry is not a GeometryCollection")
 }
 
 // AsPoint returns the geometry as a Point. It panics if the geometry is not a
 // Point.
 func (g Geometry) AsPoint() Point {
-	g.check(TypePoint)
-	return *(*Point)(g.ptr)
+	if v, ok := g.Geometryer.(Point); ok {
+		return v
+	}
+	panic("geometry is not a Point")
 }
 
 // AsLineString returns the geometry as a LineString. It panics if the geometry
 // is not a LineString.
 func (g Geometry) AsLineString() LineString {
-	g.check(TypeLineString)
-	return *(*LineString)(g.ptr)
+	if v, ok := g.Geometryer.(LineString); ok {
+		return v
+	}
+	panic("geometry is not a LineString")
 }
 
 // AsPolygon returns the geometry as a Polygon. It panics if the geometry is
 // not a Polygon.
 func (g Geometry) AsPolygon() Polygon {
-	g.check(TypePolygon)
-	return *(*Polygon)(g.ptr)
+	if v, ok := g.Geometryer.(Polygon); ok {
+		return v
+	}
+	panic("geometry is not a Polygon")
 }
 
 // AsMultiPoint returns the geometry as a MultiPoint. It panics if the geometry
 // is not a MultiPoint.
 func (g Geometry) AsMultiPoint() MultiPoint {
-	g.check(TypeMultiPoint)
-	return *(*MultiPoint)(g.ptr)
+	if v, ok := g.Geometryer.(MultiPoint); ok {
+		return v
+	}
+	panic("geometry is not a MultiPoint")
 }
 
 // AsMultiLineString returns the geometry as a MultiLineString. It panics if
 // the geometry is not a MultiLineString.
 func (g Geometry) AsMultiLineString() MultiLineString {
-	g.check(TypeMultiLineString)
-	return *(*MultiLineString)(g.ptr)
+	if v, ok := g.Geometryer.(MultiLineString); ok {
+		return v
+	}
+	panic("geometry is not a MultiLineString")
 }
 
 // AsMultiPolygon returns the geometry as a MultiPolygon. It panics if the
 // Geometry is not a MultiPolygon.
 func (g Geometry) AsMultiPolygon() MultiPolygon {
-	g.check(TypeMultiPolygon)
-	return *(*MultiPolygon)(g.ptr)
+	if v, ok := g.Geometryer.(MultiPolygon); ok {
+		return v
+	}
+	panic("geometry is not a MultiPolygon")
 }
 
 // AsText returns the WKT (Well Known Text) representation of this geometry.
-func (g Geometry) AsText() string {
-	switch g.gtype {
-	case TypeGeometryCollection:
-		return g.AsGeometryCollection().AsText()
-	case TypePoint:
-		return g.AsPoint().AsText()
-	case TypeLineString:
-		return g.AsLineString().AsText()
-	case TypePolygon:
-		return g.AsPolygon().AsText()
-	case TypeMultiPoint:
-		return g.AsMultiPoint().AsText()
-	case TypeMultiLineString:
-		return g.AsMultiLineString().AsText()
-	case TypeMultiPolygon:
-		return g.AsMultiPolygon().AsText()
-	default:
-		panic("unknown geometry: " + g.gtype.String())
-	}
-}
+//func (g Geometry) AsText() string {
+//	switch g.gtype {
+//	case TypeGeometryCollection:
+//		return g.AsGeometryCollection().AsText()
+//	case TypePoint:
+//		return g.AsPoint().AsText()
+//	case TypeLineString:
+//		return g.AsLineString().AsText()
+//	case TypePolygon:
+//		return g.AsPolygon().AsText()
+//	case TypeMultiPoint:
+//		return g.AsMultiPoint().AsText()
+//	case TypeMultiLineString:
+//		return g.AsMultiLineString().AsText()
+//	case TypeMultiPolygon:
+//		return g.AsMultiPolygon().AsText()
+//	default:
+//		panic("unknown geometry: " + g.gtype.String())
+//	}
+//}
 
 // MarshalJSON implements the encoding/json.Marshaller interface by encoding
 // this geometry as a GeoJSON geometry object.
