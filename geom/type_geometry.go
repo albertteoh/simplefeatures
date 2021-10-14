@@ -3,15 +3,25 @@ package geom
 import (
 	"database/sql/driver"
 	"fmt"
-	"unsafe"
 )
+
+// Geometryer represents a generic geometry.
+type Geometryer interface {
+	Type() GeometryType
+	NumPoints() int
+}
+
+// Geometry wraps a Geometryer interface.
+type Geometry struct {
+	Geometryer
+}
 
 // Geometry is a single geometry of any type. Its zero value is valid and is
 // an empty GeometryCollection. It is immutable after creation.
-type Geometry struct {
-	gtype GeometryType
-	ptr   unsafe.Pointer
-}
+//type Geometry struct {
+//	gtype GeometryType
+//	ptr   unsafe.Pointer
+//}
 
 // GeometryType represents one of the 7 geometry types.
 type GeometryType int
@@ -55,51 +65,51 @@ func (t GeometryType) String() string {
 }
 
 // Type returns a string representation of the geometry's type.
-func (g Geometry) Type() GeometryType {
-	switch g.gtype {
-	case TypeGeometryCollection:
-		return g.AsGeometryCollection().Type()
-	case TypePoint:
-		return g.AsPoint().Type()
-	case TypeLineString:
-		return g.AsLineString().Type()
-	case TypePolygon:
-		return g.AsPolygon().Type()
-	case TypeMultiPoint:
-		return g.AsMultiPoint().Type()
-	case TypeMultiLineString:
-		return g.AsMultiLineString().Type()
-	case TypeMultiPolygon:
-		return g.AsMultiPolygon().Type()
-	default:
-		panic("unknown geometry: " + g.gtype.String())
-	}
-}
+//func (g Geometry) Type() GeometryType {
+//	switch g.gtype {
+//	case TypeGeometryCollection:
+//		return g.AsGeometryCollection().Type()
+//	case TypePoint:
+//		return g.AsPoint().Type()
+//	case TypeLineString:
+//		return g.AsLineString().Type()
+//	case TypePolygon:
+//		return g.AsPolygon().Type()
+//	case TypeMultiPoint:
+//		return g.AsMultiPoint().Type()
+//	case TypeMultiLineString:
+//		return g.AsMultiLineString().Type()
+//	case TypeMultiPolygon:
+//		return g.AsMultiPolygon().Type()
+//	default:
+//		panic("unknown geometry: " + g.gtype.String())
+//	}
+//}
 
 // IsGeometryCollection return true iff the Geometry is a GeometryCollection geometry.
-func (g Geometry) IsGeometryCollection() bool { return g.gtype == TypeGeometryCollection }
+func (g Geometry) IsGeometryCollection() bool { return g.Type() == TypeGeometryCollection }
 
 // IsPoint return true iff the Geometry is a Point geometry.
-func (g Geometry) IsPoint() bool { return g.gtype == TypePoint }
+func (g Geometry) IsPoint() bool { return g.Type() == TypePoint }
 
 // IsLineString return true iff the Geometry is a LineString geometry.
-func (g Geometry) IsLineString() bool { return g.gtype == TypeLineString }
+func (g Geometry) IsLineString() bool { return g.Type() == TypeLineString }
 
 // IsPolygon return true iff the Geometry is a Polygon geometry.
-func (g Geometry) IsPolygon() bool { return g.gtype == TypePolygon }
+func (g Geometry) IsPolygon() bool { return g.Type() == TypePolygon }
 
 // IsMultiPoint return true iff the Geometry is a MultiPoint geometry.
-func (g Geometry) IsMultiPoint() bool { return g.gtype == TypeMultiPoint }
+func (g Geometry) IsMultiPoint() bool { return g.Type() == TypeMultiPoint }
 
 // IsMultiLineString return true iff the Geometry is a MultiLineString geometry.
-func (g Geometry) IsMultiLineString() bool { return g.gtype == TypeMultiLineString }
+func (g Geometry) IsMultiLineString() bool { return g.Type() == TypeMultiLineString }
 
 // IsMultiPolygon return true iff the Geometry is a MultiPolygon geometry.
-func (g Geometry) IsMultiPolygon() bool { return g.gtype == TypeMultiPolygon }
+func (g Geometry) IsMultiPolygon() bool { return g.Type() == TypeMultiPolygon }
 
 func (g Geometry) check(gtype GeometryType) {
-	if g.gtype != gtype {
-		panic(fmt.Sprintf("called As%s on Geometry containing %s", gtype, g.gtype))
+	if g.Type() != gtype {
+		panic(fmt.Sprintf("called As%s on Geometry containing %s", gtype, g.Type()))
 	}
 }
 
