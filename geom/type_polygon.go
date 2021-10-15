@@ -26,7 +26,9 @@ import (
 //
 type Polygon interface {
 	Geometryer
+
 	ForceCoordinatesType(newCType CoordinatesType) Polygon
+	Coordinates() []Sequence
 }
 
 type polygon struct {
@@ -159,6 +161,10 @@ func validatePolygon(rings []LineString, opts ctorOptionSet) error {
 		return validationError{"polygon has disconnected interior"}
 	}
 	return nil
+}
+
+func (m polygon) Length() int {
+	return 0
 }
 
 // Type returns the GeometryType for a Polygon

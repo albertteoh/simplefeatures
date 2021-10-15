@@ -10,6 +10,17 @@ type Geometryer interface {
 	Type() GeometryType
 	AsGeometry() Geometry
 	AsText() string
+	CoordinatesType() CoordinatesType
+	Centroid() Point
+	IsEmpty() bool
+	ForceCoordinatesType(newCType CoordinatesType) Geometry
+
+	// Length gives the length of a Line, LineString, or MultiLineString
+	// or the sum of the lengths of the components of a GeometryCollection.
+	// Other Geometries are defined to return a length of zero.
+	Length() float64
+
+	MarshalJSON() ([]byte, error)
 }
 
 // Geometry wraps a Geometryer interface.
@@ -208,26 +219,26 @@ func (g Geometry) AsMultiPolygon() MultiPolygon {
 
 // MarshalJSON implements the encoding/json.Marshaller interface by encoding
 // this geometry as a GeoJSON geometry object.
-func (g Geometry) MarshalJSON() ([]byte, error) {
-	switch g.gtype {
-	case TypeGeometryCollection:
-		return g.AsGeometryCollection().MarshalJSON()
-	case TypePoint:
-		return g.AsPoint().MarshalJSON()
-	case TypeLineString:
-		return g.AsLineString().MarshalJSON()
-	case TypePolygon:
-		return g.AsPolygon().MarshalJSON()
-	case TypeMultiPoint:
-		return g.AsMultiPoint().MarshalJSON()
-	case TypeMultiLineString:
-		return g.AsMultiLineString().MarshalJSON()
-	case TypeMultiPolygon:
-		return g.AsMultiPolygon().MarshalJSON()
-	default:
-		panic("unknown geometry: " + g.gtype.String())
-	}
-}
+//func (g Geometry) MarshalJSON() ([]byte, error) {
+//	switch g.gtype {
+//	case TypeGeometryCollection:
+//		return g.AsGeometryCollection().MarshalJSON()
+//	case TypePoint:
+//		return g.AsPoint().MarshalJSON()
+//	case TypeLineString:
+//		return g.AsLineString().MarshalJSON()
+//	case TypePolygon:
+//		return g.AsPolygon().MarshalJSON()
+//	case TypeMultiPoint:
+//		return g.AsMultiPoint().MarshalJSON()
+//	case TypeMultiLineString:
+//		return g.AsMultiLineString().MarshalJSON()
+//	case TypeMultiPolygon:
+//		return g.AsMultiPolygon().MarshalJSON()
+//	default:
+//		panic("unknown geometry: " + g.gtype.String())
+//	}
+//}
 
 // UnmarshalJSON implements the encoding/json.Unmarshaller interface by
 // parsing the JSON stream as GeoJSON geometry object.
@@ -504,28 +515,28 @@ func (g Geometry) TransformXY(fn func(XY) XY, opts ...ConstructorOption) (Geomet
 // Length gives the length of a Line, LineString, or MultiLineString
 // or the sum of the lengths of the components of a GeometryCollection.
 // Other Geometries are defined to return a length of zero.
-func (g Geometry) Length() float64 {
-	switch {
-	case g.IsEmpty():
-		return 0
-	case g.IsGeometryCollection():
-		return g.AsGeometryCollection().Length()
-	case g.IsLineString():
-		return g.AsLineString().Length()
-	case g.IsMultiLineString():
-		return g.AsMultiLineString().Length()
-	case g.IsPoint():
-		return 0
-	case g.IsMultiPoint():
-		return 0
-	case g.IsPolygon():
-		return 0
-	case g.IsMultiPolygon():
-		return 0
-	default:
-		return 0
-	}
-}
+//func (g Geometry) Length() float64 {
+//	switch {
+//	case g.IsEmpty():
+//		return 0
+//	case g.IsGeometryCollection():
+//		return g.AsGeometryCollection().Length()
+//	case g.IsLineString():
+//		return g.AsLineString().Length()
+//	case g.IsMultiLineString():
+//		return g.AsMultiLineString().Length()
+//	case g.IsPoint():
+//		return 0
+//	case g.IsMultiPoint():
+//		return 0
+//	case g.IsPolygon():
+//		return 0
+//	case g.IsMultiPolygon():
+//		return 0
+//	default:
+//		return 0
+//	}
+//}
 
 // Centroid returns the geometry's centroid Point. If the Geometry is empty,
 // then an empty Point is returned.
@@ -649,24 +660,24 @@ func (g Geometry) CoordinatesType() CoordinatesType {
 // ForceCoordinatesType returns a new Geometry with a different CoordinatesType. If a
 // dimension is added, then new values are populated with 0.
 func (g Geometry) ForceCoordinatesType(newCType CoordinatesType) Geometry {
-	switch g.gtype {
-	case TypeGeometryCollection:
-		return g.AsGeometryCollection().ForceCoordinatesType(newCType).AsGeometry()
-	case TypePoint:
-		return g.AsPoint().ForceCoordinatesType(newCType).AsGeometry()
-	case TypeLineString:
-		return g.AsLineString().ForceCoordinatesType(newCType).AsGeometry()
-	case TypePolygon:
-		return g.AsPolygon().ForceCoordinatesType(newCType).AsGeometry()
-	case TypeMultiPoint:
-		return g.AsMultiPoint().ForceCoordinatesType(newCType).AsGeometry()
-	case TypeMultiLineString:
-		return g.AsMultiLineString().ForceCoordinatesType(newCType).AsGeometry()
-	case TypeMultiPolygon:
-		return g.AsMultiPolygon().ForceCoordinatesType(newCType).AsGeometry()
-	default:
-		panic("unknown geometry: " + g.gtype.String())
-	}
+	//switch g.gtype {
+	//case TypeGeometryCollection:
+	//	return g.AsGeometryCollection().ForceCoordinatesType(newCType).AsGeometry()
+	//case TypePoint:
+	//	return g.AsPoint().ForceCoordinatesType(newCType).AsGeometry()
+	//case TypeLineString:
+	//	return g.AsLineString().ForceCoordinatesType(newCType).AsGeometry()
+	//case TypePolygon:
+	//	return g.AsPolygon().ForceCoordinatesType(newCType).AsGeometry()
+	//case TypeMultiPoint:
+	//	return g.AsMultiPoint().ForceCoordinatesType(newCType).AsGeometry()
+	//case TypeMultiLineString:
+	//	return g.AsMultiLineString().ForceCoordinatesType(newCType).AsGeometry()
+	//case TypeMultiPolygon:
+	//	return g.AsMultiPolygon().ForceCoordinatesType(newCType).AsGeometry()
+	//default:
+	//	panic("unknown geometry: " + g.gtype.String())
+	//}
 }
 
 // Force2D returns a copy of the geometry with Z and M values removed.

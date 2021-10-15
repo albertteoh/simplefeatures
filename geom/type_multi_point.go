@@ -8,7 +8,17 @@ import (
 // MultiPoint is a 0-dimensional geometry that is a collection of points. Its
 // zero value is the empty MultiPoint (i.e. a collection of zero points) with
 // 2D coordinates type. It is immutable after creation.
-type MultiPoint struct {
+type MultiPoint interface {
+	Geometryer
+
+	//ForceCoordinatesType(newCType CoordinatesType) MultiPoint
+	Coordinates() Sequence
+	NumPoints() int
+	PointN(n int) Point
+	Force2D() MultiPoint
+}
+
+type multiPoint struct {
 	// Invariant: ctype matches the coordinates type of each point.
 	points []Point
 	ctype  CoordinatesType
@@ -18,7 +28,7 @@ type MultiPoint struct {
 // type of the MultiPoint is the lowest common coordinates type of its Points.
 func NewMultiPoint(pts []Point, opts ...ConstructorOption) MultiPoint {
 	if len(pts) == 0 {
-		return MultiPoint{}
+		return multiPoint{}
 	}
 
 	ctype := DimXYZM
@@ -27,37 +37,41 @@ func NewMultiPoint(pts []Point, opts ...ConstructorOption) MultiPoint {
 	}
 
 	forced := forceCoordinatesTypeOfPointSlice(pts, ctype)
-	return MultiPoint{forced, ctype}
+	return multiPoint{forced, ctype}
+}
+
+func (m multiPoint) Length() float64 {
+	return 0
 }
 
 // Type returns the GeometryType for a MultiPoint
-func (m MultiPoint) Type() GeometryType {
+func (m multiPoint) Type() GeometryType {
 	return TypeMultiPoint
 }
 
 // AsGeometry converts this MultiPoint into a Geometry.
-func (m MultiPoint) AsGeometry() Geometry {
+func (m multiPoint) AsGeometry() Geometry {
 	return Geometry{m}
 }
 
 // NumPoints gives the number of element points making up the MultiPoint.
-func (m MultiPoint) NumPoints() int {
+func (m multiPoint) NumPoints() int {
 	return len(m.points)
 }
 
 // PointN gives the nth (zero indexed) Point.
-func (m MultiPoint) PointN(n int) Point {
+func (m multiPoint) PointN(n int) Point {
 	return m.points[n]
 }
 
 // AsText returns the WKT (Well Known Text) representation of this geometry.
-func (m MultiPoint) AsText() string {
+func (m multiPoint) AsText() string {
 	return string(m.AppendWKT(nil))
 }
 
 // AppendWKT appends the WKT (Well Known Text) representation of this geometry
 // to the input byte slice.
-func (m MultiPoint) AppendWKT(dst []byte) []byte {
+func (m multiPoint) AppendWKT(dst []byte) []byte {
 	dst = appendWKTHeader(dst, "MULTIPOINT", m.CoordinatesType())
 	if len(m.points) == 0 {
 		return appendWKTEmpty(dst)
@@ -75,7 +89,7 @@ func (m MultiPoint) AppendWKT(dst []byte) []byte {
 // IsSimple returns true if this geometry contains no anomalous geometry
 // points, such as self intersection or self tangency.  MultiPoints are simple
 // if and only if no two of its points have equal XY coordinates.
-func (m MultiPoint) IsSimple() bool {
+func (m multiPoint) IsSimple() bool {
 	seen := make(map[XY]bool)
 	for i := 0; i < m.NumPoints(); i++ {
 		xy, ok := m.PointN(i).XY()
@@ -92,7 +106,7 @@ func (m MultiPoint) IsSimple() bool {
 
 // IsEmpty return true if and only if this MultiPoint doesn't contain any
 // Points, or only contains empty Points.
-func (m MultiPoint) IsEmpty() bool {
+func (m multiPoint) IsEmpty() bool {
 	for _, pt := range m.points {
 		if !pt.IsEmpty() {
 			return false
@@ -102,7 +116,7 @@ func (m MultiPoint) IsEmpty() bool {
 }
 
 // Envelope returns the Envelope that most tightly surrounds the geometry.
-func (m MultiPoint) Envelope() Envelope {
+func (m multiPoint) Envelope() Envelope {
 	var env Envelope
 	for _, pt := range m.points {
 		env = env.ExpandToIncludeEnvelope(pt.Envelope())
@@ -112,13 +126,13 @@ func (m MultiPoint) Envelope() Envelope {
 
 // Boundary returns the spatial boundary for this MultiPoint, which is always
 // the empty set. This is represented by the empty GeometryCollection.
-func (m MultiPoint) Boundary() GeometryCollection {
-	return GeometryCollection{}
+func (m multiPoint) Boundary() GeometryCollection {
+	return geometryCollection{}
 }
 
 // Value implements the database/sql/driver.Valuer interface by returning the
 // WKB (Well Known Binary) representation of this Geometry.
-func (m MultiPoint) Value() (driver.Value, error) {
+func (m multiPoint) Value() (driver.Value, error) {
 	return m.AsBinary(), nil
 }
 
@@ -131,18 +145,18 @@ func (m MultiPoint) Value() (driver.Value, error) {
 // ConstructionOptions are needed, then the value should be scanned into a byte
 // slice and then UnmarshalWKB called manually (passing in the
 // ConstructionOptions as desired).
-func (m *MultiPoint) Scan(src interface{}) error {
+func (m *multiPoint) Scan(src interface{}) error {
 	return scanAsType(src, m, TypeMultiPoint)
 }
 
 // AsBinary returns the WKB (Well Known Text) representation of the geometry.
-func (m MultiPoint) AsBinary() []byte {
+func (m multiPoint) AsBinary() []byte {
 	return m.AppendWKB(nil)
 }
 
 // AppendWKB appends the WKB (Well Known Text) representation of the geometry
 // to the input slice.
-func (m MultiPoint) AppendWKB(dst []byte) []byte {
+func (m multiPoint) AppendWKB(dst []byte) []byte {
 	marsh := newWKBMarshaller(dst)
 	marsh.writeByteOrder()
 	marsh.writeGeomType(TypeMultiPoint, m.CoordinatesType())
@@ -157,13 +171,13 @@ func (m MultiPoint) AppendWKB(dst []byte) []byte {
 
 // ConvexHull returns the geometry representing the smallest convex geometry
 // that contains this geometry.
-func (m MultiPoint) ConvexHull() Geometry {
+func (m multiPoint) ConvexHull() Geometry {
 	return convexHull(m.AsGeometry())
 }
 
 // MarshalJSON implements the encoding/json.Marshaller interface by encoding
 // this geometry as a GeoJSON geometry object.
-func (m MultiPoint) MarshalJSON() ([]byte, error) {
+func (m multiPoint) MarshalJSON() ([]byte, error) {
 	var dst []byte
 	dst = append(dst, `{"type":"MultiPoint","coordinates":[`...)
 	first := true
@@ -183,7 +197,7 @@ func (m MultiPoint) MarshalJSON() ([]byte, error) {
 
 // Coordinates returns the coordinates of the non-empty points represented by
 // the MultiPoint.
-func (m MultiPoint) Coordinates() Sequence {
+func (m multiPoint) Coordinates() Sequence {
 	ctype := m.CoordinatesType()
 	coords := make([]float64, 0, len(m.points)*ctype.Dimension())
 	for _, pt := range m.points {
@@ -195,7 +209,7 @@ func (m MultiPoint) Coordinates() Sequence {
 }
 
 // TransformXY transforms this MultiPoint into another MultiPoint according to fn.
-func (m MultiPoint) TransformXY(fn func(XY) XY, opts ...ConstructorOption) (MultiPoint, error) {
+func (m multiPoint) TransformXY(fn func(XY) XY, opts ...ConstructorOption) (MultiPoint, error) {
 	txPoints := make([]Point, len(m.points))
 	for i, pt := range m.points {
 		if c, ok := pt.Coordinates(); ok {
@@ -203,7 +217,7 @@ func (m MultiPoint) TransformXY(fn func(XY) XY, opts ...ConstructorOption) (Mult
 			var err error
 			txPoints[i], err = NewPoint(c, opts...)
 			if err != nil {
-				return MultiPoint{}, err
+				return multiPoint{}, err
 			}
 		} else {
 			txPoints[i] = pt
@@ -213,7 +227,7 @@ func (m MultiPoint) TransformXY(fn func(XY) XY, opts ...ConstructorOption) (Mult
 }
 
 // Centroid gives the centroid of the coordinates of the MultiPoint.
-func (m MultiPoint) Centroid() Point {
+func (m multiPoint) Centroid() Point {
 	var sum XY
 	var n int
 	for i := 0; i < m.NumPoints(); i++ {
@@ -231,21 +245,21 @@ func (m MultiPoint) Centroid() Point {
 
 // Reverse in the case of MultiPoint outputs each component point in their
 // original order.
-func (m MultiPoint) Reverse() MultiPoint {
+func (m multiPoint) Reverse() MultiPoint {
 	return m
 }
 
 // CoordinatesType returns the CoordinatesType used to represent points making
 // up the geometry.
-func (m MultiPoint) CoordinatesType() CoordinatesType {
+func (m multiPoint) CoordinatesType() CoordinatesType {
 	return m.ctype
 }
 
 // ForceCoordinatesType returns a new MultiPoint with a different CoordinatesType. If a
 // dimension is added, then new values are populated with 0.
-func (m MultiPoint) ForceCoordinatesType(newCType CoordinatesType) MultiPoint {
+func (m multiPoint) ForceCoordinatesType(newCType CoordinatesType) Geometry {
 	newPoints := forceCoordinatesTypeOfPointSlice(m.points, newCType)
-	return MultiPoint{newPoints, newCType}
+	return multiPoint{newPoints, newCType}.AsGeometry()
 }
 
 // forceCoordinatesTypeOfPointSlice creates a new slice of Points, each forced
@@ -259,12 +273,12 @@ func forceCoordinatesTypeOfPointSlice(pts []Point, ctype CoordinatesType) []Poin
 }
 
 // Force2D returns a copy of the MultiPoint with Z and M values removed.
-func (m MultiPoint) Force2D() MultiPoint {
+func (m multiPoint) Force2D() MultiPoint {
 	return m.ForceCoordinatesType(DimXY)
 }
 
 // PointOnSurface returns one of the Points in the Collection.
-func (m MultiPoint) PointOnSurface() Point {
+func (m multiPoint) PointOnSurface() Point {
 	nearest := newNearestPointAccumulator(m.Centroid())
 	n := m.NumPoints()
 	for i := 0; i < n; i++ {
@@ -273,7 +287,7 @@ func (m MultiPoint) PointOnSurface() Point {
 	return nearest.point
 }
 
-func (m MultiPoint) asXYs() []XY {
+func (m multiPoint) asXYs() []XY {
 	xys := make([]XY, 0, len(m.points))
 	for _, pt := range m.points {
 		if xy, ok := pt.XY(); ok {
@@ -284,7 +298,7 @@ func (m MultiPoint) asXYs() []XY {
 }
 
 // Dump returns the MultiPoint represented as a Point slice.
-func (m MultiPoint) Dump() []Point {
+func (m multiPoint) Dump() []Point {
 	pts := make([]Point, len(m.points))
 	copy(pts, m.points)
 	return pts
@@ -292,7 +306,7 @@ func (m MultiPoint) Dump() []Point {
 
 // DumpCoordinates returns the non-empty points in a MultiPoint represented as
 // a Sequence.
-func (m MultiPoint) DumpCoordinates() Sequence {
+func (m multiPoint) DumpCoordinates() Sequence {
 	ctype := m.CoordinatesType()
 	nonEmpty := make([]float64, 0, len(m.points)*ctype.Dimension())
 	for _, pt := range m.points {
@@ -305,7 +319,7 @@ func (m MultiPoint) DumpCoordinates() Sequence {
 }
 
 // Summary returns a text summary of the MultiPoint following a similar format to https://postgis.net/docs/ST_Summary.html.
-func (m MultiPoint) Summary() string {
+func (m multiPoint) Summary() string {
 	var pointSuffix string
 	numPoints := m.NumPoints()
 	if numPoints != 1 {
@@ -315,6 +329,6 @@ func (m MultiPoint) Summary() string {
 }
 
 // String returns the string representation of the MultiPoint.
-func (m MultiPoint) String() string {
+func (m multiPoint) String() string {
 	return m.Summary()
 }

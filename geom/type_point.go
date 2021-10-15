@@ -12,7 +12,14 @@ import (
 // The Point may be empty.
 //
 // The zero value of Point is a 2D empty Point.
-type Point struct {
+type Point interface {
+	Geometryer
+
+	XY() (XY, bool)
+	Force2D() Point
+}
+
+type point struct {
 	coords Coordinates
 	full   bool
 }
@@ -27,7 +34,7 @@ func NewPoint(c Coordinates, opts ...ConstructorOption) (Point, error) {
 		if os.omitInvalid {
 			return NewEmptyPoint(c.Type), nil
 		}
-		return Point{}, validationError{err.Error()}
+		return point{}, validationError{err.Error()}
 	}
 	return newUncheckedPoint(c), nil
 }
@@ -49,49 +56,53 @@ func NewPoint(c Coordinates, opts ...ConstructorOption) (Point, error) {
 // overflow to +/- inf. However if control points are originally close to
 // infinity, many of the algorithms will be already broken in many other ways.
 func newUncheckedPoint(c Coordinates) Point {
-	return Point{c, true}
+	return point{c, true}
 }
 
 // NewEmptyPoint creates a Point that is empty.
 func NewEmptyPoint(ctype CoordinatesType) Point {
-	return Point{Coordinates{Type: ctype}, false}
+	return point{Coordinates{Type: ctype}, false}
+}
+
+func (p point) Length() float64 {
+	return 0
 }
 
 // Type returns the GeometryType for a Point
-func (p Point) Type() GeometryType {
+func (p point) Type() GeometryType {
 	return TypePoint
 }
 
 // AsGeometry converts this Point into a Geometry.
-func (p Point) AsGeometry() Geometry {
+func (p point) AsGeometry() Geometry {
 	return Geometry{p}
 }
 
 // XY gives the XY location of the point. The returned flag is set to true if
 // and only if the point is non-empty.
-func (p Point) XY() (XY, bool) {
+func (p point) XY() (XY, bool) {
 	return p.coords.XY, p.full
 }
 
 // Coordinates returns the coordinates of the point. The returned flag is set
 // to true if and only if the point is non-empty.
-func (p Point) Coordinates() (Coordinates, bool) {
+func (p point) Coordinates() (Coordinates, bool) {
 	return p.coords, p.full
 }
 
 // AsText returns the WKT (Well Known Text) representation of this geometry.
-func (p Point) AsText() string {
+func (p point) AsText() string {
 	return string(p.AppendWKT(nil))
 }
 
 // AppendWKT appends the WKT (Well Known Text) representation of this geometry
 // to the input byte slice.
-func (p Point) AppendWKT(dst []byte) []byte {
+func (p point) AppendWKT(dst []byte) []byte {
 	dst = appendWKTHeader(dst, "POINT", p.coords.Type)
 	return p.appendWKTBody(dst)
 }
 
-func (p Point) appendWKTBody(dst []byte) []byte {
+func (p point) appendWKTBody(dst []byte) []byte {
 	if !p.full {
 		return appendWKTEmpty(dst)
 	}
@@ -99,20 +110,20 @@ func (p Point) appendWKTBody(dst []byte) []byte {
 }
 
 // IsEmpty returns true if and only if this Point is the empty Point.
-func (p Point) IsEmpty() bool {
+func (p point) IsEmpty() bool {
 	return !p.full
 }
 
 // IsSimple returns true if this geometry contains no anomalous geometry
 // points, such as self intersection or self tangency. Points are always
 // simple, so this method always return true.
-func (p Point) IsSimple() bool {
+func (p point) IsSimple() bool {
 	return true
 }
 
 // Envelope returns the envelope best fitting the Point (either an empty
 // envelope, or an envelope covering a single point).
-func (p Point) Envelope() Envelope {
+func (p point) Envelope() Envelope {
 	if xy, ok := p.XY(); ok {
 		return Envelope{}.uncheckedExtend(xy)
 	}
@@ -121,13 +132,13 @@ func (p Point) Envelope() Envelope {
 
 // Boundary returns the spatial boundary for this Point, which is always the
 // empty set. This is represented by the empty GeometryCollection.
-func (p Point) Boundary() GeometryCollection {
-	return GeometryCollection{}
+func (p point) Boundary() GeometryCollection {
+	return geometryCollection{}
 }
 
 // Value implements the database/sql/driver.Valuer interface by returning the
 // WKB (Well Known Binary) representation of this Geometry.
-func (p Point) Value() (driver.Value, error) {
+func (p point) Value() (driver.Value, error) {
 	return p.AsBinary(), nil
 }
 
@@ -140,18 +151,18 @@ func (p Point) Value() (driver.Value, error) {
 // ConstructionOptions are needed, then the value should be scanned into a byte
 // slice and then UnmarshalWKB called manually (passing in the
 // ConstructionOptions as desired).
-func (p *Point) Scan(src interface{}) error {
+func (p *point) Scan(src interface{}) error {
 	return scanAsType(src, p, TypePoint)
 }
 
 // AsBinary returns the WKB (Well Known Text) representation of the geometry.
-func (p Point) AsBinary() []byte {
+func (p point) AsBinary() []byte {
 	return p.AppendWKB(nil)
 }
 
 // AppendWKB appends the WKB (Well Known Text) representation of the geometry
 // to the input slice.
-func (p Point) AppendWKB(dst []byte) []byte {
+func (p point) AppendWKB(dst []byte) []byte {
 	marsh := newWKBMarshaller(dst)
 	marsh.writeByteOrder()
 	marsh.writeGeomType(TypePoint, p.CoordinatesType())
@@ -167,13 +178,13 @@ func (p Point) AppendWKB(dst []byte) []byte {
 
 // ConvexHull returns the geometry representing the smallest convex geometry
 // that contains this geometry.
-func (p Point) ConvexHull() Geometry {
+func (p point) ConvexHull() Geometry {
 	return convexHull(p.AsGeometry())
 }
 
 // MarshalJSON implements the encoding/json.Marshaller interface by encoding
 // this geometry as a GeoJSON geometry object.
-func (p Point) MarshalJSON() ([]byte, error) {
+func (p point) MarshalJSON() ([]byte, error) {
 	var dst []byte
 	dst = append(dst, `{"type":"Point","coordinates":`...)
 	if p.full {
@@ -185,7 +196,7 @@ func (p Point) MarshalJSON() ([]byte, error) {
 }
 
 // TransformXY transforms this Point into another Point according to fn.
-func (p Point) TransformXY(fn func(XY) XY, opts ...ConstructorOption) (Point, error) {
+func (p point) TransformXY(fn func(XY) XY, opts ...ConstructorOption) (Point, error) {
 	if !p.full {
 		return p, nil
 	}
@@ -195,29 +206,29 @@ func (p Point) TransformXY(fn func(XY) XY, opts ...ConstructorOption) (Point, er
 }
 
 // Centroid of a point is that point.
-func (p Point) Centroid() Point {
+func (p point) Centroid() Point {
 	return p.Force2D()
 }
 
 // Reverse in the case of Point outputs the same point.
-func (p Point) Reverse() Point {
+func (p point) Reverse() Point {
 	return p
 }
 
 // AsMultiPoint is a convenience function that converts this Point into a
 // MultiPoint.
-func (p Point) AsMultiPoint() MultiPoint {
+func (p point) AsMultiPoint() MultiPoint {
 	return NewMultiPoint([]Point{p})
 }
 
 // CoordinatesType returns the CoordinatesType used to represent the Point.
-func (p Point) CoordinatesType() CoordinatesType {
+func (p point) CoordinatesType() CoordinatesType {
 	return p.coords.Type
 }
 
 // ForceCoordinatesType returns a new Point with a different CoordinatesType. If a dimension
 // is added, then new values are populated with 0.
-func (p Point) ForceCoordinatesType(newCType CoordinatesType) Point {
+func (p point) ForceCoordinatesType(newCType CoordinatesType) Point {
 	if !p.full {
 		return NewEmptyPoint(newCType)
 	}
@@ -232,16 +243,16 @@ func (p Point) ForceCoordinatesType(newCType CoordinatesType) Point {
 }
 
 // Force2D returns a copy of the Point with Z and M values removed.
-func (p Point) Force2D() Point {
+func (p point) Force2D() Point {
 	return p.ForceCoordinatesType(DimXY)
 }
 
 // PointOnSurface returns the original Point.
-func (p Point) PointOnSurface() Point {
+func (p point) PointOnSurface() Point {
 	return p.Force2D()
 }
 
-func (p Point) asXYs() []XY {
+func (p point) asXYs() []XY {
 	if xy, ok := p.XY(); ok {
 		return []XY{xy}
 	}
@@ -251,7 +262,7 @@ func (p Point) asXYs() []XY {
 // DumpCoordinates returns a Sequence representing the point. For an empty
 // Point, the Sequence will be empty. For a non-empty Point, the Sequence will
 // contain the single set of coordinates representing the point.
-func (p Point) DumpCoordinates() Sequence {
+func (p point) DumpCoordinates() Sequence {
 	ctype := p.CoordinatesType()
 	var floats []float64
 	coords, ok := p.Coordinates()
@@ -265,7 +276,7 @@ func (p Point) DumpCoordinates() Sequence {
 }
 
 // Summary returns a text summary of the Point following a similar format to https://postgis.net/docs/ST_Summary.html.
-func (p Point) Summary() string {
+func (p point) Summary() string {
 	var pointSuffix string
 	numPoints := 1
 	if p.IsEmpty() {
@@ -276,6 +287,6 @@ func (p Point) Summary() string {
 }
 
 // String returns the string representation of the Point.
-func (p Point) String() string {
+func (p point) String() string {
 	return p.Summary()
 }

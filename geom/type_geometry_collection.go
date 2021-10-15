@@ -4,13 +4,19 @@ import (
 	"database/sql/driver"
 	"encoding/json"
 	"fmt"
-	"unsafe"
 )
 
 // GeometryCollection is a non-homogeneous collection of geometries. Its zero
 // value is the empty GeometryCollection (i.e. a collection of zero
 // geometries).
-type GeometryCollection struct {
+type GeometryCollection interface {
+	Geometryer
+	NumTotalGeometries() int
+	walk(fn func(Geometry))
+	geometries() []Geometry
+}
+
+type geometryCollection struct {
 	// Invariant: ctype matches the coordinates type of each geometry.
 	geoms []Geometry
 	ctype CoordinatesType
@@ -21,7 +27,7 @@ type GeometryCollection struct {
 // child geometries.
 func NewGeometryCollection(geoms []Geometry, opts ...ConstructorOption) GeometryCollection {
 	if len(geoms) == 0 {
-		return GeometryCollection{}
+		return geometryCollection{}
 	}
 
 	ctype := DimXYZM
@@ -32,27 +38,31 @@ func NewGeometryCollection(geoms []Geometry, opts ...ConstructorOption) Geometry
 	for i := range geoms {
 		geoms[i] = geoms[i].ForceCoordinatesType(ctype)
 	}
-	return GeometryCollection{geoms, ctype}
+	return geometryCollection{geoms, ctype}
+}
+
+func (c geometryCollection) geometries() []Geometry {
+	return c.geoms
 }
 
 // Type returns the GeometryType for a GeometryCollection
-func (c GeometryCollection) Type() GeometryType {
+func (c geometryCollection) Type() GeometryType {
 	return TypeGeometryCollection
 }
 
 // AsGeometry converts this GeometryCollection into a Geometry.
-func (c GeometryCollection) AsGeometry() Geometry {
-	return Geometry{TypeGeometryCollection, unsafe.Pointer(&c)}
+func (c geometryCollection) AsGeometry() Geometry {
+	return Geometry{c}
 }
 
 // NumGeometries gives the number of Geometry elements in the GeometryCollection.
-func (c GeometryCollection) NumGeometries() int {
+func (c geometryCollection) NumGeometries() int {
 	return len(c.geoms)
 }
 
 // NumTotalGeometries gives the total number of Geometry elements in the GeometryCollection.
 // If there are GeometryCollection-type child geometries, this will recursively count its children.
-func (c GeometryCollection) NumTotalGeometries() int {
+func (c geometryCollection) NumTotalGeometries() int {
 	var n int
 	for _, geom := range c.geoms {
 		if geom.IsGeometryCollection() {
@@ -63,18 +73,18 @@ func (c GeometryCollection) NumTotalGeometries() int {
 }
 
 // GeometryN gives the nth (zero based) Geometry in the GeometryCollection.
-func (c GeometryCollection) GeometryN(n int) Geometry {
+func (c geometryCollection) GeometryN(n int) Geometry {
 	return c.geoms[n]
 }
 
 // AsText returns the WKT (Well Known Text) representation of this geometry.
-func (c GeometryCollection) AsText() string {
+func (c geometryCollection) AsText() string {
 	return string(c.AppendWKT(nil))
 }
 
 // AppendWKT appends the WKT (Well Known Text) representation of this geometry
 // to the input byte slice.
-func (c GeometryCollection) AppendWKT(dst []byte) []byte {
+func (c geometryCollection) AppendWKT(dst []byte) []byte {
 	dst = appendWKTHeader(dst, "GEOMETRYCOLLECTION", c.ctype)
 	if len(c.geoms) == 0 {
 		return appendWKTEmpty(dst)
@@ -91,7 +101,7 @@ func (c GeometryCollection) AppendWKT(dst []byte) []byte {
 
 // IsEmpty return true if and only if this GeometryCollection doesn't contain
 // any elements, or only contains empty elements.
-func (c GeometryCollection) IsEmpty() bool {
+func (c geometryCollection) IsEmpty() bool {
 	for _, g := range c.geoms {
 		if !g.IsEmpty() {
 			return false
@@ -104,7 +114,7 @@ func (c GeometryCollection) IsEmpty() bool {
 // collection is the empty collection. Points and MultiPoints have dimension 0,
 // LineStrings and MultiLineStrings have dimension 1, and Polygons and
 // MultiPolygons have dimension 2.
-func (c GeometryCollection) Dimension() int {
+func (c geometryCollection) Dimension() int {
 	dim := 0
 	for _, g := range c.geoms {
 		dim = max(dim, g.Dimension())
@@ -114,7 +124,7 @@ func (c GeometryCollection) Dimension() int {
 
 // walk traverses a tree of GeometryCollections, triggering a callback at each
 // non-Geometry collection leaf.
-func (c GeometryCollection) walk(fn func(Geometry)) {
+func (c geometryCollection) walk(fn func(Geometry)) {
 	for _, g := range c.geoms {
 		if g.IsGeometryCollection() {
 			g.AsGeometryCollection().walk(fn)
@@ -125,7 +135,7 @@ func (c GeometryCollection) walk(fn func(Geometry)) {
 }
 
 // Envelope returns the Envelope that most tightly surrounds the geometry.
-func (c GeometryCollection) Envelope() Envelope {
+func (c geometryCollection) Envelope() Envelope {
 	var env Envelope
 	for _, g := range c.geoms {
 		env = env.ExpandToIncludeEnvelope(g.Envelope())
@@ -135,7 +145,7 @@ func (c GeometryCollection) Envelope() Envelope {
 
 // Boundary returns the spatial boundary of this GeometryCollection. This is
 // the GeometryCollection containing the boundaries of each child geometry.
-func (c GeometryCollection) Boundary() GeometryCollection {
+func (c geometryCollection) Boundary() GeometryCollection {
 	if c.IsEmpty() {
 		return c
 	}
@@ -146,12 +156,12 @@ func (c GeometryCollection) Boundary() GeometryCollection {
 			bounds = append(bounds, bound)
 		}
 	}
-	return GeometryCollection{bounds, DimXY}
+	return geometryCollection{bounds, DimXY}
 }
 
 // Value implements the database/sql/driver.Valuer interface by returning the
 // WKB (Well Known Binary) representation of this Geometry.
-func (c GeometryCollection) Value() (driver.Value, error) {
+func (c geometryCollection) Value() (driver.Value, error) {
 	return c.AsBinary(), nil
 }
 
@@ -165,18 +175,18 @@ func (c GeometryCollection) Value() (driver.Value, error) {
 // ConstructionOptions are needed, then the value should be scanned into a byte
 // slice and then UnmarshalWKB called manually (passing in the
 // ConstructionOptions as desired).
-func (c *GeometryCollection) Scan(src interface{}) error {
+func (c *geometryCollection) Scan(src interface{}) error {
 	return scanAsType(src, c, TypeGeometryCollection)
 }
 
 // AsBinary returns the WKB (Well Known Text) representation of the geometry.
-func (c GeometryCollection) AsBinary() []byte {
+func (c geometryCollection) AsBinary() []byte {
 	return c.AppendWKB(nil)
 }
 
 // AppendWKB appends the WKB (Well Known Text) representation of the geometry
 // to the input slice.
-func (c GeometryCollection) AppendWKB(dst []byte) []byte {
+func (c geometryCollection) AppendWKB(dst []byte) []byte {
 	marsh := newWKBMarshaller(dst)
 	marsh.writeByteOrder()
 	marsh.writeGeomType(TypeGeometryCollection, c.ctype)
@@ -191,13 +201,13 @@ func (c GeometryCollection) AppendWKB(dst []byte) []byte {
 
 // ConvexHull returns the geometry representing the smallest convex geometry
 // that contains this geometry.
-func (c GeometryCollection) ConvexHull() Geometry {
+func (c geometryCollection) ConvexHull() Geometry {
 	return convexHull(c.AsGeometry())
 }
 
 // MarshalJSON implements the encoding/json.Marshaller interface by encoding
 // this geometry as a GeoJSON geometry object.
-func (c GeometryCollection) MarshalJSON() ([]byte, error) {
+func (c geometryCollection) MarshalJSON() ([]byte, error) {
 	buf := []byte(`{"type":"GeometryCollection","geometries":`)
 	var geoms = c.geoms
 	if geoms == nil {
@@ -213,21 +223,21 @@ func (c GeometryCollection) MarshalJSON() ([]byte, error) {
 }
 
 // TransformXY transforms this GeometryCollection into another GeometryCollection according to fn.
-func (c GeometryCollection) TransformXY(fn func(XY) XY, opts ...ConstructorOption) (GeometryCollection, error) {
+func (c geometryCollection) TransformXY(fn func(XY) XY, opts ...ConstructorOption) (GeometryCollection, error) {
 	transformed := make([]Geometry, len(c.geoms))
 	for i := range c.geoms {
 		var err error
 		transformed[i], err = c.geoms[i].TransformXY(fn, opts...)
 		if err != nil {
-			return GeometryCollection{}, wrapTransformed(err)
+			return geometryCollection{}, wrapTransformed(err)
 		}
 	}
-	return GeometryCollection{transformed, c.ctype}, nil
+	return geometryCollection{transformed, c.ctype}, nil
 }
 
 // Reverse in the case of GeometryCollection reverses each component and also
 // returns them in the original order.
-func (c GeometryCollection) Reverse() GeometryCollection {
+func (c geometryCollection) Reverse() GeometryCollection {
 	if c.IsEmpty() {
 		return c
 	}
@@ -236,11 +246,11 @@ func (c GeometryCollection) Reverse() GeometryCollection {
 		rev := c.GeometryN(n).Reverse()
 		geoms = append(geoms, rev)
 	}
-	return GeometryCollection{geoms, c.ctype}
+	return geometryCollection{geoms, c.ctype}
 }
 
 // Length of a GeometryCollection is the sum of the lengths of its parts.
-func (c GeometryCollection) Length() float64 {
+func (c geometryCollection) Length() float64 {
 	var sum float64
 	n := c.NumGeometries()
 	for i := 0; i < n; i++ {
@@ -251,7 +261,7 @@ func (c GeometryCollection) Length() float64 {
 }
 
 // Area in the case of a GeometryCollection is the sum of the areas of its parts.
-func (c GeometryCollection) Area(opts ...AreaOption) float64 {
+func (c geometryCollection) Area(opts ...AreaOption) float64 {
 	var sum float64
 	n := c.NumGeometries()
 	for i := 0; i < n; i++ {
@@ -273,14 +283,14 @@ func highestDimensionIgnoreEmpties(g Geometry) int {
 	}
 	c := g.AsGeometryCollection()
 	highestDim := 0
-	for _, g2 := range c.geoms {
+	for _, g2 := range c.geometries() {
 		highestDim = max(highestDim, highestDimensionIgnoreEmpties(g2))
 	}
 	return highestDim
 }
 
 // Centroid of a GeometryCollection is the centroid of its parts' centroids.
-func (c GeometryCollection) Centroid() Point {
+func (c geometryCollection) Centroid() Point {
 	if c.IsEmpty() {
 		return NewEmptyPoint(DimXY)
 	}
@@ -296,7 +306,7 @@ func (c GeometryCollection) Centroid() Point {
 	}
 }
 
-func (c GeometryCollection) pointCentroid() Point {
+func (c geometryCollection) pointCentroid() Point {
 	var (
 		numPoints int
 		sumPoints XY
@@ -323,7 +333,7 @@ func (c GeometryCollection) pointCentroid() Point {
 	return sumPoints.Scale(1 / float64(numPoints)).asUncheckedPoint()
 }
 
-func (c GeometryCollection) linearCentroid() Point {
+func (c geometryCollection) linearCentroid() Point {
 	var (
 		lengthSum        float64
 		weightedCentroid XY
@@ -354,7 +364,7 @@ func (c GeometryCollection) linearCentroid() Point {
 	return weightedCentroid.Scale(1 / lengthSum).asUncheckedPoint()
 }
 
-func (c GeometryCollection) arealCentroid() Point {
+func (c geometryCollection) arealCentroid() Point {
 	var (
 		areas   []float64
 		areaSum float64
@@ -379,28 +389,28 @@ func (c GeometryCollection) arealCentroid() Point {
 
 // CoordinatesType returns the CoordinatesType used to represent points making
 // up the geometry.
-func (c GeometryCollection) CoordinatesType() CoordinatesType {
+func (c geometryCollection) CoordinatesType() CoordinatesType {
 	return c.ctype
 }
 
 // ForceCoordinatesType returns a new GeometryCollection with a different CoordinatesType. If
 // a dimension is added, then new values are populated with 0.
-func (c GeometryCollection) ForceCoordinatesType(newCType CoordinatesType) GeometryCollection {
+func (c geometryCollection) ForceCoordinatesType(newCType CoordinatesType) GeometryCollection {
 	gs := make([]Geometry, len(c.geoms))
 	for i := range c.geoms {
 		gs[i] = c.geoms[i].ForceCoordinatesType(newCType)
 	}
-	return GeometryCollection{gs, newCType}
+	return geometryCollection{gs, newCType}
 }
 
 // Force2D returns a copy of the GeometryCollection with Z and M values removed.
-func (c GeometryCollection) Force2D() GeometryCollection {
+func (c geometryCollection) Force2D() GeometryCollection {
 	return c.ForceCoordinatesType(DimXY)
 }
 
 // PointOnSurface returns a Point that's on one of the geometries in the
 // collection.
-func (c GeometryCollection) PointOnSurface() Point {
+func (c geometryCollection) PointOnSurface() Point {
 	// For collection with mixed dimension, we only consider members who have
 	// the highest dimension.
 	var maxDim int
@@ -426,7 +436,7 @@ func (c GeometryCollection) PointOnSurface() Point {
 // Polygons and MultiPolygons reoriented in a clockwise direction (i.e.
 // exterior rings clockwise and interior rings counter-clockwise). Geometries
 // other that Polygons and MultiPolygons are unchanged.
-func (c GeometryCollection) ForceCW() GeometryCollection {
+func (c geometryCollection) ForceCW() GeometryCollection {
 	return c.forceOrientation(true)
 }
 
@@ -434,23 +444,23 @@ func (c GeometryCollection) ForceCW() GeometryCollection {
 // Polygons and MultiPolygons reoriented in a counter-clockwise direction (i.e.
 // exterior rings counter-clockwise and interior rings clockwise). Geometries
 // other that Polygons and MultiPolygons are unchanged.
-func (c GeometryCollection) ForceCCW() GeometryCollection {
+func (c geometryCollection) ForceCCW() GeometryCollection {
 	return c.forceOrientation(false)
 }
 
-func (c GeometryCollection) forceOrientation(forceCW bool) GeometryCollection {
+func (c geometryCollection) forceOrientation(forceCW bool) GeometryCollection {
 	geoms := make([]Geometry, len(c.geoms))
 	for i, g := range c.geoms {
 		geoms[i] = g.forceOrientation(forceCW)
 	}
-	return GeometryCollection{geoms, c.ctype}
+	return geometryCollection{geoms, c.ctype}
 }
 
 // Dump breaks this GeometryCollection into its constituent non-multi types
 // (Points, LineStrings, and Polygons).
 //
 // The returned slice will only ever contain Points, LineStrings, and Polygons.
-func (c GeometryCollection) Dump() []Geometry {
+func (c geometryCollection) Dump() []Geometry {
 	var gs []Geometry
 	for _, g := range c.geoms {
 		gs = g.appendDump(gs)
@@ -460,7 +470,7 @@ func (c GeometryCollection) Dump() []Geometry {
 
 // DumpCoordinates returns a Sequence holding all control points in the
 // GeometryCollection.
-func (c GeometryCollection) DumpCoordinates() Sequence {
+func (c geometryCollection) DumpCoordinates() Sequence {
 	var coords []float64
 	for _, g := range c.geoms {
 		coords = g.DumpCoordinates().appendAllPoints(coords)
@@ -469,7 +479,7 @@ func (c GeometryCollection) DumpCoordinates() Sequence {
 }
 
 // Summary returns a text summary of the GeometryCollection following a similar format to https://postgis.net/docs/ST_Summary.html.
-func (c GeometryCollection) Summary() string {
+func (c geometryCollection) Summary() string {
 	var pointSuffix string
 	numPoints := c.DumpCoordinates().Length()
 	if numPoints != 1 {
@@ -487,6 +497,6 @@ func (c GeometryCollection) Summary() string {
 }
 
 // String returns the string representation of the GeometryCollection.
-func (c GeometryCollection) String() string {
+func (c geometryCollection) String() string {
 	return c.Summary()
 }
