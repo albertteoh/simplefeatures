@@ -530,7 +530,7 @@ func TestGraphMultiLineString(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	dcel := newDCELFromGeometry(mls, MultiLineString{}, operandA, findInteractionPoints([]Geometry{mls}))
+	dcel := newDCELFromGeometry(mls, multiLineString{}, operandA, findInteractionPoints([]Geometry{mls}))
 
 	/*
 	        v2    v3
@@ -590,7 +590,7 @@ func TestGraphSelfOverlappingLineString(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	dcel := newDCELFromGeometry(ls, MultiLineString{}, operandA, findInteractionPoints([]Geometry{ls}))
+	dcel := newDCELFromGeometry(ls, multiLineString{}, operandA, findInteractionPoints([]Geometry{ls}))
 
 	/*
 	   v1----v2----v4

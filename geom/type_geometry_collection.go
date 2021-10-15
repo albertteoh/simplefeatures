@@ -11,7 +11,11 @@ import (
 // geometries).
 type GeometryCollection interface {
 	Geometryer
+
 	NumTotalGeometries() int
+	NumGeometries() int
+	GeometryN(n int) Geometry
+
 	walk(fn func(Geometry))
 	geometries() []Geometry
 }

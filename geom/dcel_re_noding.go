@@ -81,30 +81,30 @@ func reNodeGeometries(g1, g2 Geometry, mls MultiLineString) (Geometry, Geometry,
 	var err error
 	g1, err = g1.TransformXY(nodes.insertOrGet, DisableAllValidations)
 	if err != nil {
-		return Geometry{}, Geometry{}, MultiLineString{}, err
+		return Geometry{}, Geometry{}, multiLineString{}, err
 	}
 	g2, err = g2.TransformXY(nodes.insertOrGet, DisableAllValidations)
 	if err != nil {
-		return Geometry{}, Geometry{}, MultiLineString{}, err
+		return Geometry{}, Geometry{}, multiLineString{}, err
 	}
 	mls, err = mls.TransformXY(nodes.insertOrGet, DisableAllValidations)
 	if err != nil {
-		return Geometry{}, Geometry{}, MultiLineString{}, err
+		return Geometry{}, Geometry{}, multiLineString{}, err
 	}
 
 	// Create additional nodes for crossings.
 	cut := newCutSet(all)
 	g1, err = reNodeGeometry(g1, cut, nodes)
 	if err != nil {
-		return Geometry{}, Geometry{}, MultiLineString{}, err
+		return Geometry{}, Geometry{}, multiLineString{}, err
 	}
 	g2, err = reNodeGeometry(g2, cut, nodes)
 	if err != nil {
-		return Geometry{}, Geometry{}, MultiLineString{}, err
+		return Geometry{}, Geometry{}, multiLineString{}, err
 	}
 	mls, err = reNodeMultiLineString(mls, cut, nodes)
 	if err != nil {
-		return Geometry{}, Geometry{}, MultiLineString{}, err
+		return Geometry{}, Geometry{}, multiLineString{}, err
 	}
 	return g1, g2, mls, nil
 }
@@ -256,7 +256,7 @@ func reNodeLineString(ls LineString, cut cutSet, nodes nodeSet) (LineString, err
 
 	newLS, err := NewLineString(NewSequence(newCoords, DimXY), DisableAllValidations)
 	if err != nil {
-		return LineString{}, err
+		return lineString{}, err
 	}
 	return newLS, nil
 }
@@ -268,7 +268,7 @@ func reNodeMultiLineString(mls MultiLineString, cut cutSet, nodes nodeSet) (Mult
 		var err error
 		lss[i], err = reNodeLineString(mls.LineStringN(i), cut, nodes)
 		if err != nil {
-			return MultiLineString{}, err
+			return multiLineString{}, err
 		}
 	}
 	return NewMultiLineString(lss, DisableAllValidations), nil
@@ -277,7 +277,7 @@ func reNodeMultiLineString(mls MultiLineString, cut cutSet, nodes nodeSet) (Mult
 func reNodePolygon(poly Polygon, cut cutSet, nodes nodeSet) (Polygon, error) {
 	reNodedBoundary, err := reNodeMultiLineString(poly.Boundary(), cut, nodes)
 	if err != nil {
-		return Polygon{}, err
+		return polygon{}, err
 	}
 	n := reNodedBoundary.NumLineStrings()
 	rings := make([]LineString, n)
@@ -286,7 +286,7 @@ func reNodePolygon(poly Polygon, cut cutSet, nodes nodeSet) (Polygon, error) {
 	}
 	reNodedPoly, err := NewPolygon(rings, DisableAllValidations)
 	if err != nil {
-		return Polygon{}, err
+		return polygon{}, err
 	}
 	return reNodedPoly, nil
 }
@@ -298,12 +298,12 @@ func reNodeMultiPolygonString(mp MultiPolygon, cut cutSet, nodes nodeSet) (Multi
 		var err error
 		polys[i], err = reNodePolygon(mp.PolygonN(i), cut, nodes)
 		if err != nil {
-			return MultiPolygon{}, err
+			return multiPolygon{}, err
 		}
 	}
 	reNodedMP, err := NewMultiPolygon(polys, DisableAllValidations)
 	if err != nil {
-		return MultiPolygon{}, err
+		return multiPolygon{}, err
 	}
 	return reNodedMP, nil
 }
@@ -315,7 +315,7 @@ func reNodeGeometryCollection(gc GeometryCollection, cut cutSet, nodes nodeSet) 
 		var err error
 		geoms[i], err = reNodeGeometry(gc.GeometryN(i), cut, nodes)
 		if err != nil {
-			return GeometryCollection{}, err
+			return geometryCollection{}, err
 		}
 	}
 	return NewGeometryCollection(geoms, DisableAllValidations), nil

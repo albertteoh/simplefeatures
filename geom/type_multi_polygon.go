@@ -23,6 +23,9 @@ type MultiPolygon interface {
 
 	Reverse() MultiPolygon
 	ForceCoordinatesType(newCType CoordinatesType) MultiPolygon
+	NumPolygons() int
+	PolygonN(n int) Polygon
+	Coordinates() [][]Sequence
 }
 
 type multiPolygon struct {

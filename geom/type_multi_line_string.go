@@ -19,6 +19,7 @@ type MultiLineString interface {
 	Reverse() MultiLineString
 	NumLineStrings() int
 	LineStringN(int) LineString
+	Coordinates() []Sequence
 
 	asLines() []line
 }

@@ -25,6 +25,8 @@ type LineString interface {
 	Force2D() LineString
 	Boundary() MultiPoint
 	Reverse() LineString
+	IsRing() bool
+	AsMultiLineString() MultiLineString
 
 	appendWKTBody(dst []byte) []byte
 	getSeq() Sequence

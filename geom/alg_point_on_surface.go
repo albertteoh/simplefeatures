@@ -59,14 +59,14 @@ func pointOnAreaSurface(poly Polygon) (Point, float64) {
 	env := poly.Envelope()
 	mid, ok := env.Center().XY()
 	if !ok {
-		return Point{}, 0
+		return point{}, 0
 	}
 	midY := mid.Y
 
 	// Adjust mid-y value if a control point has the same Y.
 	var midYMatchesNode bool
 	nextY := math.Inf(+1)
-	for _, ring := range poly.rings {
+	for _, ring := range poly.getRings() {
 		seq := ring.Coordinates()
 		for i := 0; i < seq.Length(); i++ {
 			xy := seq.GetXY(i)
@@ -85,7 +85,7 @@ func pointOnAreaSurface(poly Polygon) (Point, float64) {
 	// Create bisector.
 	envMin, envMax, ok := env.MinMaxXYs()
 	if !ok {
-		return Point{}, 0
+		return point{}, 0
 	}
 
 	bisector := line{
@@ -95,7 +95,7 @@ func pointOnAreaSurface(poly Polygon) (Point, float64) {
 
 	// Find intersection points between the bisector and the polygon.
 	var xIntercepts []float64
-	for _, ring := range poly.rings {
+	for _, ring := range poly.getRings() {
 		seq := ring.Coordinates()
 		n := seq.Length()
 		for i := 0; i < n; i++ {

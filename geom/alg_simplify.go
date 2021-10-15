@@ -7,7 +7,7 @@ package geom
 // geometry constructor options.
 func Simplify(g Geometry, threshold float64, opts ...ConstructorOption) (Geometry, error) {
 	s := simplifier{threshold, opts}
-	switch g.gtype {
+	switch g.Type() {
 	case TypeGeometryCollection:
 		gc, err := s.simplifyGeometryCollection(g.AsGeometryCollection())
 		return gc.AsGeometry(), wrapSimplified(err)
@@ -28,7 +28,7 @@ func Simplify(g Geometry, threshold float64, opts ...ConstructorOption) (Geometr
 		mp, err := s.simplifyMultiPolygon(g.AsMultiPolygon())
 		return mp.AsGeometry(), wrapSimplified(err)
 	default:
-		panic("unknown geometry: " + g.gtype.String())
+		panic("unknown geometry: " + g.Type().String())
 	}
 }
 
@@ -42,7 +42,7 @@ func (s simplifier) simplifyLineString(ls LineString) (LineString, error) {
 	floats := s.ramerDouglasPeucker(nil, seq)
 	seq = NewSequence(floats, seq.CoordinatesType())
 	if seq.Length() > 0 && !hasAtLeast2DistinctPointsInSeq(seq) {
-		return LineString{}, nil
+		return lineString{}, nil
 	}
 	return NewLineString(seq, s.opts...)
 }
@@ -54,7 +54,7 @@ func (s simplifier) simplifyMultiLineString(mls MultiLineString) (MultiLineStrin
 		ls := mls.LineStringN(i)
 		ls, err := s.simplifyLineString(ls)
 		if err != nil {
-			return MultiLineString{}, err
+			return multiLineString{}, err
 		}
 		if !ls.IsEmpty() {
 			lss = append(lss, ls)
@@ -66,14 +66,14 @@ func (s simplifier) simplifyMultiLineString(mls MultiLineString) (MultiLineStrin
 func (s simplifier) simplifyPolygon(poly Polygon) (Polygon, error) {
 	exterior, err := s.simplifyLineString(poly.ExteriorRing())
 	if err != nil {
-		return Polygon{}, err
+		return polygon{}, err
 	}
 
 	// If we don't have at least 4 coordinates, then we can't form a ring, and
 	// the polygon has collapsed either to a point or a single linear element.
 	// Both cases are represented by an empty polygon.
 	if exterior.Coordinates().Length() < 4 {
-		return Polygon{}, nil
+		return polygon{}, nil
 	}
 
 	n := poly.NumInteriorRings()
@@ -82,7 +82,7 @@ func (s simplifier) simplifyPolygon(poly Polygon) (Polygon, error) {
 	for i := 0; i < n; i++ {
 		interior, err := s.simplifyLineString(poly.InteriorRingN(i))
 		if err != nil {
-			return Polygon{}, err
+			return polygon{}, err
 		}
 		if interior.IsRing() {
 			rings = append(rings, interior)
@@ -97,7 +97,7 @@ func (s simplifier) simplifyMultiPolygon(mp MultiPolygon) (MultiPolygon, error) 
 	for i := 0; i < n; i++ {
 		poly, err := s.simplifyPolygon(mp.PolygonN(i))
 		if err != nil {
-			return MultiPolygon{}, err
+			return multiPolygon{}, err
 		}
 		if !poly.IsEmpty() {
 			polys = append(polys, poly)
@@ -113,7 +113,7 @@ func (s simplifier) simplifyGeometryCollection(gc GeometryCollection) (GeometryC
 		var err error
 		geoms[i], err = Simplify(gc.GeometryN(i), s.threshold)
 		if err != nil {
-			return GeometryCollection{}, err
+			return geometryCollection{}, err
 		}
 	}
 	return NewGeometryCollection(geoms, s.opts...), nil

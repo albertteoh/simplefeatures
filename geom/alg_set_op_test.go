@@ -1067,7 +1067,7 @@ func TestBinaryOpOneInputEmpty(t *testing.T) {
 	} {
 		t.Run(opCase.opName, func(t *testing.T) {
 			poly := geomFromWKT(t, "POLYGON((0 0,0 1,1 0,0 0))")
-			empty := geom.Polygon{}.AsGeometry()
+			empty := geom.polygon{}.AsGeometry()
 			got, err := opCase.op(poly, empty)
 			expectNoErr(t, err)
 			if opCase.wantEmpty {

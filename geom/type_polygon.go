@@ -35,6 +35,10 @@ type Polygon interface {
 	TransformXY(fn func(XY) XY, opts ...ConstructorOption) (Polygon, error)
 	Area(opts ...AreaOption) float64
 	NumRings() int
+	NumInteriorRings() int
+	InteriorRingN(n int) LineString
+	AsMultiPolygon() MultiPolygon
+	AsBinary() []byte
 
 	getRings() []LineString
 	reverse() Geometryer

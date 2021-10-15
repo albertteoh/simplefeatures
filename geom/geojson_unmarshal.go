@@ -249,7 +249,7 @@ func geojsonNodeToGeometry(node interface{}, ctype CoordinatesType, opts []Const
 		return ls.AsGeometry(), err
 	case geojsonPolygon:
 		if len(node.coords) == 0 {
-			return Polygon{}.ForceCoordinatesType(ctype).AsGeometry(), nil
+			return polygon{}.ForceCoordinatesType(ctype).AsGeometry(), nil
 		}
 		rings := make([]LineString, len(node.coords))
 		for i, coords := range node.coords {
@@ -265,7 +265,7 @@ func geojsonNodeToGeometry(node interface{}, ctype CoordinatesType, opts []Const
 	case geojsonMultiPoint:
 		// GeoJSON MultiPoints cannot contain empty Points.
 		if len(node.coords) == 0 {
-			return MultiPoint{}.ForceCoordinatesType(ctype).AsGeometry(), nil
+			return multiPoint{}.ForceCoordinatesType(ctype).AsGeometry(), nil
 		}
 		points := make([]Point, len(node.coords))
 		for i, coords := range node.coords {
@@ -283,7 +283,7 @@ func geojsonNodeToGeometry(node interface{}, ctype CoordinatesType, opts []Const
 		return NewMultiPoint(points).AsGeometry(), nil
 	case geojsonMultiLineString:
 		if len(node.coords) == 0 {
-			return MultiLineString{}.ForceCoordinatesType(ctype).AsGeometry(), nil
+			return multiLineString{}.ForceCoordinatesType(ctype).AsGeometry(), nil
 		}
 		lss := make([]LineString, len(node.coords))
 		for i, coords := range node.coords {
@@ -297,7 +297,7 @@ func geojsonNodeToGeometry(node interface{}, ctype CoordinatesType, opts []Const
 		return NewMultiLineString(lss, opts...).AsGeometry(), nil
 	case geojsonMultiPolygon:
 		if len(node.coords) == 0 {
-			return MultiPolygon{}.ForceCoordinatesType(ctype).AsGeometry(), nil
+			return multiPolygon{}.ForceCoordinatesType(ctype).AsGeometry(), nil
 		}
 		polys := make([]Polygon, len(node.coords))
 		for i, coords := range node.coords {
@@ -321,7 +321,7 @@ func geojsonNodeToGeometry(node interface{}, ctype CoordinatesType, opts []Const
 		return mp.AsGeometry(), err
 	case geojsonGeometryCollection:
 		if len(node.geoms) == 0 {
-			return GeometryCollection{}.ForceCoordinatesType(ctype).AsGeometry(), nil
+			return geometryCollection{}.ForceCoordinatesType(ctype).AsGeometry(), nil
 		}
 		children := make([]Geometry, len(node.geoms))
 		for i, child := range node.geoms {

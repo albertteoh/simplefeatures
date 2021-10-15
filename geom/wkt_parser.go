@@ -234,22 +234,22 @@ func (p *parser) nextLineStringText(ctype CoordinatesType) (LineString, error) {
 	var floats []float64
 	tok, err := p.nextEmptySetOrLeftParen()
 	if err != nil {
-		return LineString{}, err
+		return lineString{}, err
 	}
 	if tok == "(" {
 		floats, err = p.nextPointAppend(floats, ctype)
 		if err != nil {
-			return LineString{}, err
+			return lineString{}, err
 		}
 		for {
 			tok, err := p.nextCommaOrRightParen()
 			if err != nil {
-				return LineString{}, err
+				return lineString{}, err
 			}
 			if tok == "," {
 				floats, err = p.nextPointAppend(floats, ctype)
 				if err != nil {
-					return LineString{}, err
+					return lineString{}, err
 				}
 			} else {
 				break
@@ -263,10 +263,10 @@ func (p *parser) nextLineStringText(ctype CoordinatesType) (LineString, error) {
 func (p *parser) nextPolygonText(ctype CoordinatesType) (Polygon, error) {
 	rings, err := p.nextPolygonOrMultiLineStringText(ctype)
 	if err != nil {
-		return Polygon{}, err
+		return polygon{}, err
 	}
 	if len(rings) == 0 {
-		return Polygon{}.ForceCoordinatesType(ctype), nil
+		return polygon{}.ForceCoordinatesType(ctype), nil
 	}
 	return NewPolygon(rings, p.opts...)
 }
@@ -274,10 +274,10 @@ func (p *parser) nextPolygonText(ctype CoordinatesType) (Polygon, error) {
 func (p *parser) nextMultiLineString(ctype CoordinatesType) (MultiLineString, error) {
 	lss, err := p.nextPolygonOrMultiLineStringText(ctype)
 	if err != nil {
-		return MultiLineString{}, err
+		return multiLineString{}, err
 	}
 	if len(lss) == 0 {
-		return MultiLineString{}.ForceCoordinatesType(ctype), nil
+		return multiLineString{}.ForceCoordinatesType(ctype), nil
 	}
 	return NewMultiLineString(lss, p.opts...), nil
 }
@@ -316,19 +316,19 @@ func (p *parser) nextPolygonOrMultiLineStringText(ctype CoordinatesType) ([]Line
 func (p *parser) nextMultiPointText(ctype CoordinatesType) (MultiPoint, error) {
 	tok, err := p.nextEmptySetOrLeftParen()
 	if err != nil {
-		return MultiPoint{}, err
+		return multiPoint{}, err
 	}
 	var points []Point
 	if tok == "(" {
 		for {
 			coords, ok, err := p.nextMultiPointStylePoint(ctype)
 			if err != nil {
-				return MultiPoint{}, err
+				return multiPoint{}, err
 			}
 			if ok {
 				pt, err := NewPoint(coords, p.opts...)
 				if err != nil {
-					return MultiPoint{}, err
+					return multiPoint{}, err
 				}
 				points = append(points, pt)
 			} else {
@@ -336,7 +336,7 @@ func (p *parser) nextMultiPointText(ctype CoordinatesType) (MultiPoint, error) {
 			}
 			tok, err = p.nextCommaOrRightParen()
 			if err != nil {
-				return MultiPoint{}, err
+				return multiPoint{}, err
 			}
 			if tok != "," {
 				break
@@ -344,7 +344,7 @@ func (p *parser) nextMultiPointText(ctype CoordinatesType) (MultiPoint, error) {
 		}
 	}
 	if len(points) == 0 {
-		return MultiPoint{}.ForceCoordinatesType(ctype), nil
+		return multiPoint{}.ForceCoordinatesType(ctype), nil
 	}
 	return NewMultiPoint(points, p.opts...), nil
 }
@@ -387,18 +387,18 @@ func (p *parser) nextMultiPolygonText(ctype CoordinatesType) (MultiPolygon, erro
 	var polys []Polygon
 	tok, err := p.nextEmptySetOrLeftParen()
 	if err != nil {
-		return MultiPolygon{}, err
+		return multiPolygon{}, err
 	}
 	if tok == "(" {
 		for i := 0; true; i++ {
 			poly, err := p.nextPolygonText(ctype)
 			if err != nil {
-				return MultiPolygon{}, err
+				return multiPolygon{}, err
 			}
 			polys = append(polys, poly)
 			tok, err := p.nextCommaOrRightParen()
 			if err != nil {
-				return MultiPolygon{}, err
+				return multiPolygon{}, err
 			}
 			if tok != "," {
 				break
@@ -406,7 +406,7 @@ func (p *parser) nextMultiPolygonText(ctype CoordinatesType) (MultiPolygon, erro
 		}
 	}
 	if len(polys) == 0 {
-		return MultiPolygon{}.ForceCoordinatesType(ctype), nil
+		return multiPolygon{}.ForceCoordinatesType(ctype), nil
 	}
 	return NewMultiPolygon(polys, p.opts...)
 }
@@ -415,18 +415,18 @@ func (p *parser) nextGeometryCollectionText(ctype CoordinatesType) (GeometryColl
 	var geoms []Geometry
 	tok, err := p.nextEmptySetOrLeftParen()
 	if err != nil {
-		return GeometryCollection{}, err
+		return geometryCollection{}, err
 	}
 	if tok == "(" {
 		for {
 			g, err := p.nextGeometryTaggedText()
 			if err != nil {
-				return GeometryCollection{}, err
+				return geometryCollection{}, err
 			}
 			geoms = append(geoms, g)
 			tok, err := p.nextCommaOrRightParen()
 			if err != nil {
-				return GeometryCollection{}, err
+				return geometryCollection{}, err
 			}
 			if tok != "," {
 				break
@@ -434,7 +434,7 @@ func (p *parser) nextGeometryCollectionText(ctype CoordinatesType) (GeometryColl
 		}
 	}
 	if len(geoms) == 0 {
-		return GeometryCollection{}.ForceCoordinatesType(ctype), nil
+		return geometryCollection{}.ForceCoordinatesType(ctype), nil
 	}
 	return NewGeometryCollection(geoms, p.opts...), nil
 }

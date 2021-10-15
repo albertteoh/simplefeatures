@@ -202,12 +202,12 @@ func TestAsTextEmpty(t *testing.T) {
 		g    Geometry
 	}{
 		{"POINT EMPTY", Point{}.AsGeometry()},
-		{"LINESTRING EMPTY", LineString{}.AsGeometry()},
-		{"POLYGON EMPTY", Polygon{}.AsGeometry()},
-		{"MULTIPOINT EMPTY", MultiPoint{}.AsGeometry()},
-		{"MULTILINESTRING EMPTY", MultiLineString{}.AsGeometry()},
-		{"MULTIPOLYGON EMPTY", MultiPolygon{}.AsGeometry()},
-		{"GEOMETRYCOLLECTION EMPTY", GeometryCollection{}.AsGeometry()},
+		{"LINESTRING EMPTY", lineString{}.AsGeometry()},
+		{"POLYGON EMPTY", polygon{}.AsGeometry()},
+		{"MULTIPOINT EMPTY", multiPoint{}.AsGeometry()},
+		{"MULTILINESTRING EMPTY", multiLineString{}.AsGeometry()},
+		{"MULTIPOLYGON EMPTY", multiPolygon{}.AsGeometry()},
+		{"GEOMETRYCOLLECTION EMPTY", geometryCollection{}.AsGeometry()},
 	} {
 		t.Run(strconv.Itoa(i), func(t *testing.T) {
 			got := tt.g.AsText()

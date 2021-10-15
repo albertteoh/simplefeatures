@@ -15,7 +15,7 @@ import (
 // algorithm.
 func spanningTree(xys []XY) MultiLineString {
 	if len(xys) <= 1 {
-		return MultiLineString{}
+		return multiLineString{}
 	}
 
 	// Load points into r-tree.
