@@ -4,6 +4,8 @@ import (
 	"strconv"
 	"testing"
 
+	"github.com/peterstace/simplefeatures/internal/newempty"
+
 	. "github.com/peterstace/simplefeatures/geom"
 )
 
@@ -201,13 +203,13 @@ func TestAsTextEmpty(t *testing.T) {
 		want string
 		g    Geometry
 	}{
-		{"POINT EMPTY", newEmptyPoint(t).AsGeometry()},
-		{"LINESTRING EMPTY", newEmptyLineString(t).AsGeometry()},
-		{"POLYGON EMPTY", newEmptyPolygon(t).AsGeometry()},
-		{"MULTIPOINT EMPTY", newEmptyMultiPoint(t).AsGeometry()},
-		{"MULTILINESTRING EMPTY", newEmptyMultiLineString(t).AsGeometry()},
-		{"MULTIPOLYGON EMPTY", newEmptyMultiPolygon(t).AsGeometry()},
-		{"GEOMETRYCOLLECTION EMPTY", newEmptyGeometryCollection(t).AsGeometry()},
+		{"POINT EMPTY", newempty.Point(t).AsGeometry()},
+		{"LINESTRING EMPTY", newempty.LineString(t).AsGeometry()},
+		{"POLYGON EMPTY", newempty.Polygon(t).AsGeometry()},
+		{"MULTIPOINT EMPTY", newempty.MultiPoint(t).AsGeometry()},
+		{"MULTILINESTRING EMPTY", newempty.MultiLineString(t).AsGeometry()},
+		{"MULTIPOLYGON EMPTY", newempty.MultiPolygon(t).AsGeometry()},
+		{"GEOMETRYCOLLECTION EMPTY", newempty.GeometryCollection(t).AsGeometry()},
 	} {
 		t.Run(strconv.Itoa(i), func(t *testing.T) {
 			got := tt.g.AsText()

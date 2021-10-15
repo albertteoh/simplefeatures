@@ -5,8 +5,9 @@ import (
 	"strconv"
 	"testing"
 
+	"github.com/peterstace/simplefeatures/internal/newempty"
+
 	_ "github.com/lib/pq"
-	"github.com/peterstace/simplefeatures/geom"
 )
 
 func TestPostgresScan(t *testing.T) {
@@ -23,13 +24,13 @@ func TestPostgresScan(t *testing.T) {
 		wkt      string
 		concrete interface{ AsText() string }
 	}{
-		{"POINT(0 1)", new(geom.Point)},
-		{"MULTIPOINT((0 1))", new(geom.MultiPoint)},
-		{"LINESTRING(0 1,1 0)", new(geom.LineString)},
-		{"MULTILINESTRING((0 1,1 0))", new(geom.MultiLineString)},
-		{"POLYGON((0 0,1 0,0 1,0 0))", new(geom.Polygon)},
-		{"MULTIPOLYGON(((0 0,1 0,0 1,0 0)))", new(geom.MultiPolygon)},
-		{"GEOMETRYCOLLECTION(MULTIPOLYGON(((0 0,1 0,0 1,0 0))))", new(geom.GeometryCollection)},
+		{"POINT(0 1)", newempty.Point(t)},
+		{"MULTIPOINT((0 1))", newempty.MultiPoint(t)},
+		{"LINESTRING(0 1,1 0)", newempty.LineString(t)},
+		{"MULTILINESTRING((0 1,1 0))", newempty.MultiLineString(t)},
+		{"POLYGON((0 0,1 0,0 1,0 0))", newempty.Polygon(t)},
+		{"MULTIPOLYGON(((0 0,1 0,0 1,0 0)))", newempty.MultiPolygon(t)},
+		{"GEOMETRYCOLLECTION(MULTIPOLYGON(((0 0,1 0,0 1,0 0))))", newempty.GeometryCollection(t)},
 	} {
 		t.Run(strconv.Itoa(i), func(t *testing.T) {
 			if err := db.QueryRow(

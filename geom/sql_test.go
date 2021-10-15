@@ -4,6 +4,8 @@ import (
 	"strconv"
 	"testing"
 
+	"github.com/peterstace/simplefeatures/internal/newempty"
+
 	. "github.com/peterstace/simplefeatures/geom"
 )
 
@@ -73,13 +75,13 @@ func TestSQLScanConcrete(t *testing.T) {
 			Scan(interface{}) error
 		}
 	}{
-		{"POINT(0 1)", newEmptyPoint(t)},
-		{"MULTIPOINT((0 1))", newEmptyMultiPoint(t)},
-		{"LINESTRING(0 1,1 0)", newEmptyLineString(t)},
-		{"MULTILINESTRING((0 1,1 0))", newEmptyMultiLineString(t)},
-		{"POLYGON((0 0,1 0,0 1,0 0))", newEmptyPolygon(t)},
-		{"MULTIPOLYGON(((0 0,1 0,0 1,0 0)))", newEmptyMultiPolygon(t)},
-		{"GEOMETRYCOLLECTION(MULTIPOLYGON(((0 0,1 0,0 1,0 0))))", newEmptyGeometryCollection(t)},
+		{"POINT(0 1)", newempty.Point(t)},
+		{"MULTIPOINT((0 1))", newempty.MultiPoint(t)},
+		{"LINESTRING(0 1,1 0)", newempty.LineString(t)},
+		{"MULTILINESTRING((0 1,1 0))", newempty.MultiLineString(t)},
+		{"POLYGON((0 0,1 0,0 1,0 0))", newempty.Polygon(t)},
+		{"MULTIPOLYGON(((0 0,1 0,0 1,0 0)))", newempty.MultiPolygon(t)},
+		{"GEOMETRYCOLLECTION(MULTIPOLYGON(((0 0,1 0,0 1,0 0))))", newempty.GeometryCollection(t)},
 	} {
 		t.Run(tc.wkt, func(t *testing.T) {
 			wkb := geomFromWKT(t, tc.wkt).AsBinary()
