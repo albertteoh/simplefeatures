@@ -11,11 +11,12 @@ import (
 type MultiPoint interface {
 	Geometryer
 
-	//ForceCoordinatesType(newCType CoordinatesType) MultiPoint
+	ForceCoordinatesType(newCType CoordinatesType) MultiPoint
 	Coordinates() Sequence
 	NumPoints() int
 	PointN(n int) Point
 	Force2D() MultiPoint
+	Boundary() GeometryCollection
 }
 
 type multiPoint struct {
@@ -38,6 +39,10 @@ func NewMultiPoint(pts []Point, opts ...ConstructorOption) MultiPoint {
 
 	forced := forceCoordinatesTypeOfPointSlice(pts, ctype)
 	return multiPoint{forced, ctype}
+}
+
+func (m multiPoint) reverse() Geometryer {
+	return m.Reverse()
 }
 
 func (m multiPoint) Length() float64 {
@@ -257,9 +262,9 @@ func (m multiPoint) CoordinatesType() CoordinatesType {
 
 // ForceCoordinatesType returns a new MultiPoint with a different CoordinatesType. If a
 // dimension is added, then new values are populated with 0.
-func (m multiPoint) ForceCoordinatesType(newCType CoordinatesType) Geometry {
+func (m multiPoint) ForceCoordinatesType(newCType CoordinatesType) MultiPoint {
 	newPoints := forceCoordinatesTypeOfPointSlice(m.points, newCType)
-	return multiPoint{newPoints, newCType}.AsGeometry()
+	return multiPoint{newPoints, newCType}
 }
 
 // forceCoordinatesTypeOfPointSlice creates a new slice of Points, each forced

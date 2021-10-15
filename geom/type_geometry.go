@@ -13,7 +13,10 @@ type Geometryer interface {
 	CoordinatesType() CoordinatesType
 	Centroid() Point
 	IsEmpty() bool
-	ForceCoordinatesType(newCType CoordinatesType) Geometry
+	//ForceCoordinatesType(newCType CoordinatesType) Geometry
+	IsSimple() bool
+	Envelope() Envelope
+	AppendWKB(dst []byte) []byte
 
 	// Length gives the length of a Line, LineString, or MultiLineString
 	// or the sum of the lengths of the components of a GeometryCollection.
@@ -21,6 +24,9 @@ type Geometryer interface {
 	Length() float64
 
 	MarshalJSON() ([]byte, error)
+
+	// TODO: Hacky duplicate of Reverse to deal with GeometryCollection.
+	reverse() Geometryer
 }
 
 // Geometry wraps a Geometryer interface.
@@ -590,48 +596,14 @@ func (g Geometry) Area(opts ...AreaOption) float64 {
 // method documentation on that type. It is not defined for
 // GeometryCollections, in which case false is returned.
 func (g Geometry) IsSimple() (isSimple bool, wellDefined bool) {
-	switch g.gtype {
-	case TypeGeometryCollection:
-		return false, false
-	case TypePoint:
-		return g.AsPoint().IsSimple(), true
-	case TypeLineString:
-		return g.AsLineString().IsSimple(), true
-	case TypePolygon:
-		return g.AsPolygon().IsSimple(), true
-	case TypeMultiPoint:
-		return g.AsMultiPoint().IsSimple(), true
-	case TypeMultiLineString:
-		return g.AsMultiLineString().IsSimple(), true
-	case TypeMultiPolygon:
-		return g.AsMultiPolygon().IsSimple(), true
-	default:
-		panic("unknown geometry: " + g.gtype.String())
-	}
+	return g.Geometryer.IsSimple(), g.Type() != TypeGeometryCollection
 }
 
 // Reverse returns a new geometry containing coordinates listed in reverse order.
 // Multi component geometries do not reverse the order of their components,
 // but merely reverse each component's coordinates in place.
 func (g Geometry) Reverse() Geometry {
-	switch g.gtype {
-	case TypeGeometryCollection:
-		return g.AsGeometryCollection().Reverse().AsGeometry()
-	case TypePoint:
-		return g.AsPoint().Reverse().AsGeometry()
-	case TypeLineString:
-		return g.AsLineString().Reverse().AsGeometry()
-	case TypePolygon:
-		return g.AsPolygon().Reverse().AsGeometry()
-	case TypeMultiPoint:
-		return g.AsMultiPoint().Reverse().AsGeometry()
-	case TypeMultiLineString:
-		return g.AsMultiLineString().Reverse().AsGeometry()
-	case TypeMultiPolygon:
-		return g.AsMultiPolygon().Reverse().AsGeometry()
-	default:
-		panic("unknown geometry: " + g.gtype.String())
-	}
+	return g.Geometryer.reverse().AsGeometry()
 }
 
 // CoordinatesType returns the CoordinatesType used to represent points making

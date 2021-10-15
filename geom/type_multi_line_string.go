@@ -11,7 +11,19 @@ import (
 // LineStrings. Its zero value is the empty MultiLineString (i.e. the
 // collection of zero LineStrings) of 2D coordinate type. It is immutable after
 // creation.
-type MultiLineString struct {
+type MultiLineString interface {
+	Geometryer
+
+	Boundary() MultiPoint
+	Force2D() MultiLineString
+	Reverse() MultiLineString
+	NumLineStrings() int
+	LineStringN(int) LineString
+
+	asLines() []line
+}
+
+type multiLineString struct {
 	// Invariant: ctype matches the coordinates type of each line.
 	lines []LineString
 	ctype CoordinatesType
@@ -22,7 +34,7 @@ type MultiLineString struct {
 // common coordinates type of its LineStrings.
 func NewMultiLineString(lines []LineString, opts ...ConstructorOption) MultiLineString {
 	if len(lines) == 0 {
-		return MultiLineString{}
+		return multiLineString{}
 	}
 
 	ctype := DimXYZM
@@ -35,38 +47,38 @@ func NewMultiLineString(lines []LineString, opts ...ConstructorOption) MultiLine
 		lines[i] = lines[i].ForceCoordinatesType(ctype)
 	}
 
-	return MultiLineString{lines, ctype}
+	return multiLineString{lines, ctype}
 }
 
 // Type returns the GeometryType for a MultiLineString
-func (m MultiLineString) Type() GeometryType {
+func (m multiLineString) Type() GeometryType {
 	return TypeMultiLineString
 }
 
 // AsGeometry converts this MultiLineString into a Geometry.
-func (m MultiLineString) AsGeometry() Geometry {
+func (m multiLineString) AsGeometry() Geometry {
 	return Geometry{m}
 }
 
 // NumLineStrings gives the number of LineString elements in the
 // MultiLineString.
-func (m MultiLineString) NumLineStrings() int {
+func (m multiLineString) NumLineStrings() int {
 	return len(m.lines)
 }
 
 // LineStringN gives the nth (zero indexed) LineString element.
-func (m MultiLineString) LineStringN(n int) LineString {
+func (m multiLineString) LineStringN(n int) LineString {
 	return m.lines[n]
 }
 
 // AsText returns the WKT (Well Known Text) representation of this geometry.
-func (m MultiLineString) AsText() string {
+func (m multiLineString) AsText() string {
 	return string(m.AppendWKT(nil))
 }
 
 // AppendWKT appends the WKT (Well Known Text) representation of this geometry
 // to the input byte slice.
-func (m MultiLineString) AppendWKT(dst []byte) []byte {
+func (m multiLineString) AppendWKT(dst []byte) []byte {
 	dst = appendWKTHeader(dst, "MULTILINESTRING", m.ctype)
 	if len(m.lines) == 0 {
 		return appendWKTEmpty(dst)
@@ -89,7 +101,7 @@ func (m MultiLineString) AppendWKT(dst []byte) []byte {
 //
 // 2. The intersection between any two distinct elements occurs at points that
 // are on the boundaries of both elements.
-func (m MultiLineString) IsSimple() bool {
+func (m multiLineString) IsSimple() bool {
 	for _, ls := range m.lines {
 		if !ls.IsSimple() {
 			return false
@@ -182,7 +194,7 @@ func (m MultiLineString) IsSimple() bool {
 
 // IsEmpty return true if and only if this MultiLineString doesn't contain any
 // LineStrings, or only contains empty LineStrings.
-func (m MultiLineString) IsEmpty() bool {
+func (m multiLineString) IsEmpty() bool {
 	for _, ls := range m.lines {
 		if !ls.IsEmpty() {
 			return false
@@ -192,7 +204,7 @@ func (m MultiLineString) IsEmpty() bool {
 }
 
 // Envelope returns the Envelope that most tightly surrounds the geometry.
-func (m MultiLineString) Envelope() Envelope {
+func (m multiLineString) Envelope() Envelope {
 	var env Envelope
 	for _, ls := range m.lines {
 		env = env.ExpandToIncludeEnvelope(ls.Envelope())
@@ -204,7 +216,7 @@ func (m MultiLineString) Envelope() Envelope {
 // calculated using the "mod 2 rule". The rule states that a Point is included
 // as part of the boundary if and only if it appears on the boundary of an odd
 // number of members in the collection.
-func (m MultiLineString) Boundary() MultiPoint {
+func (m multiLineString) Boundary() MultiPoint {
 	counts := make(map[XY]int)
 	var uniqueEndpoints []Point
 	for _, ls := range m.lines {
@@ -242,7 +254,7 @@ func (m MultiLineString) Boundary() MultiPoint {
 
 // Value implements the database/sql/driver.Valuer interface by returning the
 // WKB (Well Known Binary) representation of this Geometry.
-func (m MultiLineString) Value() (driver.Value, error) {
+func (m multiLineString) Value() (driver.Value, error) {
 	return m.AsBinary(), nil
 }
 
@@ -255,18 +267,18 @@ func (m MultiLineString) Value() (driver.Value, error) {
 // ConstructionOptions are needed, then the value should be scanned into a byte
 // slice and then UnmarshalWKB called manually (passing in the
 // ConstructionOptions as desired).
-func (m *MultiLineString) Scan(src interface{}) error {
+func (m *multiLineString) Scan(src interface{}) error {
 	return scanAsType(src, m, TypeMultiLineString)
 }
 
 // AsBinary returns the WKB (Well Known Text) representation of the geometry.
-func (m MultiLineString) AsBinary() []byte {
+func (m multiLineString) AsBinary() []byte {
 	return m.AppendWKB(nil)
 }
 
 // AppendWKB appends the WKB (Well Known Text) representation of the geometry
 // to the input slice.
-func (m MultiLineString) AppendWKB(dst []byte) []byte {
+func (m multiLineString) AppendWKB(dst []byte) []byte {
 	marsh := newWKBMarshaller(dst)
 	marsh.writeByteOrder()
 	marsh.writeGeomType(TypeMultiLineString, m.ctype)
@@ -281,13 +293,13 @@ func (m MultiLineString) AppendWKB(dst []byte) []byte {
 
 // ConvexHull returns the geometry representing the smallest convex geometry
 // that contains this geometry.
-func (m MultiLineString) ConvexHull() Geometry {
+func (m multiLineString) ConvexHull() Geometry {
 	return convexHull(m.AsGeometry())
 }
 
 // MarshalJSON implements the encoding/json.Marshaller interface by encoding
 // this geometry as a GeoJSON geometry object.
-func (m MultiLineString) MarshalJSON() ([]byte, error) {
+func (m multiLineString) MarshalJSON() ([]byte, error) {
 	var dst []byte
 	dst = append(dst, `{"type":"MultiLineString","coordinates":`...)
 	dst = appendGeoJSONSequences(dst, m.Coordinates())
@@ -297,7 +309,7 @@ func (m MultiLineString) MarshalJSON() ([]byte, error) {
 
 // Coordinates returns the coordinates of each constituent LineString in the
 // MultiLineString.
-func (m MultiLineString) Coordinates() []Sequence {
+func (m multiLineString) Coordinates() []Sequence {
 	n := m.NumLineStrings()
 	seqs := make([]Sequence, n)
 	for i := 0; i < n; i++ {
@@ -307,7 +319,7 @@ func (m MultiLineString) Coordinates() []Sequence {
 }
 
 // TransformXY transforms this MultiLineString into another MultiLineString according to fn.
-func (m MultiLineString) TransformXY(fn func(XY) XY, opts ...ConstructorOption) (MultiLineString, error) {
+func (m multiLineString) TransformXY(fn func(XY) XY, opts ...ConstructorOption) (MultiLineString, error) {
 	n := m.NumLineStrings()
 	transformed := make([]LineString, n)
 	for i := 0; i < n; i++ {
@@ -317,7 +329,7 @@ func (m MultiLineString) TransformXY(fn func(XY) XY, opts ...ConstructorOption) 
 			opts...,
 		)
 		if err != nil {
-			return MultiLineString{}, wrapTransformed(err)
+			return multiLineString{}, wrapTransformed(err)
 		}
 	}
 	return NewMultiLineString(transformed, opts...), nil
@@ -325,7 +337,7 @@ func (m MultiLineString) TransformXY(fn func(XY) XY, opts ...ConstructorOption) 
 
 // Length gives the sum of the lengths of the constituent members of the multi
 // line string.
-func (m MultiLineString) Length() float64 {
+func (m multiLineString) Length() float64 {
 	var sum float64
 	for _, ln := range m.lines {
 		sum += ln.Length()
@@ -334,7 +346,7 @@ func (m MultiLineString) Length() float64 {
 }
 
 // Centroid gives the centroid of the coordinates of the multi line string.
-func (m MultiLineString) Centroid() Point {
+func (m multiLineString) Centroid() Point {
 	var sumXY XY
 	var sumLength float64
 	for i := 0; i < m.NumLineStrings(); i++ {
@@ -351,37 +363,41 @@ func (m MultiLineString) Centroid() Point {
 
 // Reverse in the case of MultiLineString outputs each component line string in their
 // original order, each individually reversed.
-func (m MultiLineString) Reverse() MultiLineString {
+func (m multiLineString) Reverse() MultiLineString {
 	linestrings := make([]LineString, len(m.lines))
 	// Form the reversed slice.
 	for i := 0; i < len(m.lines); i++ {
 		linestrings[i] = m.lines[i].Reverse()
 	}
-	return MultiLineString{linestrings, m.ctype}
+	return multiLineString{linestrings, m.ctype}
 }
 
 // CoordinatesType returns the CoordinatesType used to represent points making
 // up the geometry.
-func (m MultiLineString) CoordinatesType() CoordinatesType {
+func (m multiLineString) CoordinatesType() CoordinatesType {
 	return m.ctype
 }
 
 // ForceCoordinatesType returns a new MultiLineString with a different CoordinatesType. If a
 // dimension is added, then new values are populated with 0.
-func (m MultiLineString) ForceCoordinatesType(newCType CoordinatesType) MultiLineString {
+func (m multiLineString) ForceCoordinatesType(newCType CoordinatesType) MultiLineString {
 	flat := make([]LineString, len(m.lines))
 	for i := range m.lines {
 		flat[i] = m.lines[i].ForceCoordinatesType(newCType)
 	}
-	return MultiLineString{flat, newCType}
+	return multiLineString{flat, newCType}
+}
+
+func (m multiLineString) reverse() Geometryer {
+	return m.Reverse()
 }
 
 // Force2D returns a copy of the MultiLineString with Z and M values removed.
-func (m MultiLineString) Force2D() MultiLineString {
+func (m multiLineString) Force2D() MultiLineString {
 	return m.ForceCoordinatesType(DimXY)
 }
 
-func (m MultiLineString) asLines() []line {
+func (m multiLineString) asLines() []line {
 	var n int
 	numLineStrings := m.NumLineStrings()
 	for i := 0; i < numLineStrings; i++ {
@@ -403,7 +419,7 @@ func (m MultiLineString) asLines() []line {
 }
 
 // PointOnSurface returns a Point on one of the LineStrings in the collection.
-func (m MultiLineString) PointOnSurface() Point {
+func (m multiLineString) PointOnSurface() Point {
 	// Find the nearest control point on the LineString, ignoring the start/end points.
 	nearest := newNearestPointAccumulator(m.Centroid())
 	for i := 0; i < m.NumLineStrings(); i++ {
@@ -427,7 +443,7 @@ func (m MultiLineString) PointOnSurface() Point {
 	return nearest.point
 }
 
-func (m MultiLineString) controlPoints() int {
+func (m multiLineString) controlPoints() int {
 	var sum int
 	for _, ls := range m.lines {
 		sum += ls.Coordinates().Length()
@@ -436,7 +452,7 @@ func (m MultiLineString) controlPoints() int {
 }
 
 // Dump returns the MultiLineString represented as a LineString slice.
-func (m MultiLineString) Dump() []LineString {
+func (m multiLineString) Dump() []LineString {
 	lss := make([]LineString, len(m.lines))
 	copy(lss, m.lines)
 	return lss
@@ -444,10 +460,10 @@ func (m MultiLineString) Dump() []LineString {
 
 // DumpCoordinates returns the coordinates (as a Sequence) that constitute the
 // MultiLineString.
-func (m MultiLineString) DumpCoordinates() Sequence {
+func (m multiLineString) DumpCoordinates() Sequence {
 	var n int
 	for _, ls := range m.lines {
-		n += ls.seq.Length() * m.ctype.Dimension()
+		n += ls.getSeq().Length() * m.ctype.Dimension()
 	}
 	coords := make([]float64, 0, n)
 	for _, ls := range m.lines {
@@ -459,7 +475,7 @@ func (m MultiLineString) DumpCoordinates() Sequence {
 }
 
 // Summary returns a text summary of the MultiLineString following a similar format to https://postgis.net/docs/ST_Summary.html.
-func (m MultiLineString) Summary() string {
+func (m multiLineString) Summary() string {
 	numPoints := m.DumpCoordinates().Length()
 
 	var lineStringSuffix string
@@ -472,6 +488,6 @@ func (m MultiLineString) Summary() string {
 }
 
 // String returns the string representation of the MultiLineString.
-func (m MultiLineString) String() string {
+func (m multiLineString) String() string {
 	return m.Summary()
 }

@@ -17,6 +17,10 @@ type Point interface {
 
 	XY() (XY, bool)
 	Force2D() Point
+	ForceCoordinatesType(newCType CoordinatesType) Point
+	Coordinates() (Coordinates, bool)
+
+	appendWKTBody(dst []byte) []byte
 }
 
 type point struct {
@@ -132,8 +136,8 @@ func (p point) Envelope() Envelope {
 
 // Boundary returns the spatial boundary for this Point, which is always the
 // empty set. This is represented by the empty GeometryCollection.
-func (p point) Boundary() GeometryCollection {
-	return geometryCollection{}
+func (p point) Boundary() MultiLineString {
+	return multiLineString{}
 }
 
 // Value implements the database/sql/driver.Valuer interface by returning the
@@ -211,8 +215,8 @@ func (p point) Centroid() Point {
 }
 
 // Reverse in the case of Point outputs the same point.
-func (p point) Reverse() Point {
-	return p
+func (p point) Reverse() Geometry {
+	return p.AsGeometry()
 }
 
 // AsMultiPoint is a convenience function that converts this Point into a

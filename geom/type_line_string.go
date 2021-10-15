@@ -17,8 +17,17 @@ import (
 type LineString interface {
 	Geometryer
 
-	ForceCoordinatesType(newCType CoordinatesType) LineString
 	Coordinates() Sequence
+	IsClosed() bool
+	ForceCoordinatesType(newCType CoordinatesType) LineString
+	StartPoint() Point
+	EndPoint() Point
+	Force2D() LineString
+	Boundary() MultiPoint
+	Reverse() LineString
+
+	appendWKTBody(dst []byte) []byte
+	getSeq() Sequence
 }
 
 type lineString struct {
@@ -67,6 +76,10 @@ func hasAtLeast2DistinctPointsInSeq(seq Sequence) bool {
 		}
 	}
 	return false
+}
+
+func (s lineString) reverse() Geometryer {
+	return s.Reverse()
 }
 
 // Type returns the GeometryType for a LineString
@@ -327,6 +340,9 @@ func (s lineString) Length() float64 {
 		sum += math.Sqrt(delta.Dot(delta))
 	}
 	return sum
+}
+func (s lineString) getSeq() Sequence {
+	return s.seq
 }
 
 // Centroid gives the centroid of the coordinates of the line string.

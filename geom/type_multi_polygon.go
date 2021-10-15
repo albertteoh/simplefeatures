@@ -3,7 +3,6 @@ package geom
 import (
 	"database/sql/driver"
 	"fmt"
-	"unsafe"
 
 	"github.com/peterstace/simplefeatures/rtree"
 )
@@ -19,7 +18,14 @@ import (
 // 2. The interiors of any two polygons must not intersect.
 //
 // 3. The boundaries of any two polygons may touch only at a finite number of points.
-type MultiPolygon struct {
+type MultiPolygon interface {
+	Geometryer
+
+	Reverse() MultiPolygon
+	ForceCoordinatesType(newCType CoordinatesType) MultiPolygon
+}
+
+type multiPolygon struct {
 	// Invariant: ctype matches the coordinates type of each polygon.
 	polys []Polygon
 	ctype CoordinatesType
@@ -31,7 +37,7 @@ type MultiPolygon struct {
 // its Polygons.
 func NewMultiPolygon(polys []Polygon, opts ...ConstructorOption) (MultiPolygon, error) {
 	if len(polys) == 0 {
-		return MultiPolygon{}, nil
+		return multiPolygon{}, nil
 	}
 
 	ctype := DimXYZM
@@ -46,11 +52,11 @@ func NewMultiPolygon(polys []Polygon, opts ...ConstructorOption) (MultiPolygon, 
 	ctorOpts := newOptionSet(opts)
 	if err := validateMultiPolygon(polys, ctorOpts); err != nil {
 		if ctorOpts.omitInvalid {
-			return MultiPolygon{}, nil
+			return multiPolygon{}, nil
 		}
-		return MultiPolygon{}, err
+		return multiPolygon{}, err
 	}
-	return MultiPolygon{polys, ctype}, nil
+	return multiPolygon{polys, ctype}, nil
 }
 
 func validateMultiPolygon(polys []Polygon, opts ctorOptionSet) error {
@@ -174,38 +180,42 @@ func validatePolyNotInsidePoly(p1, p2 indexedLines) error {
 	return nil
 }
 
-func (m MultiPolygon) Length() int {
+func (m multiPolygon) reverse() Geometryer {
+	return m.Reverse()
+}
+
+func (m multiPolygon) Length() float64 {
 	return 0
 }
 
 // Type returns the GeometryType for a MultiPolygon
-func (m MultiPolygon) Type() GeometryType {
+func (m multiPolygon) Type() GeometryType {
 	return TypeMultiPolygon
 }
 
 // AsGeometry converts this MultiPolygon into a Geometry.
-func (m MultiPolygon) AsGeometry() Geometry {
-	return Geometry{TypeMultiPolygon, unsafe.Pointer(&m)}
+func (m multiPolygon) AsGeometry() Geometry {
+	return Geometry{m}
 }
 
 // NumPolygons gives the number of Polygon elements in the MultiPolygon.
-func (m MultiPolygon) NumPolygons() int {
+func (m multiPolygon) NumPolygons() int {
 	return len(m.polys)
 }
 
 // PolygonN gives the nth (zero based) Polygon element.
-func (m MultiPolygon) PolygonN(n int) Polygon {
+func (m multiPolygon) PolygonN(n int) Polygon {
 	return m.polys[n]
 }
 
 // AsText returns the WKT (Well Known Text) representation of this geometry.
-func (m MultiPolygon) AsText() string {
+func (m multiPolygon) AsText() string {
 	return string(m.AppendWKT(nil))
 }
 
 // AppendWKT appends the WKT (Well Known Text) representation of this geometry
 // to the input byte slice.
-func (m MultiPolygon) AppendWKT(dst []byte) []byte {
+func (m multiPolygon) AppendWKT(dst []byte) []byte {
 	dst = appendWKTHeader(dst, "MULTIPOLYGON", m.ctype)
 	if len(m.polys) == 0 {
 		return appendWKTEmpty(dst)
@@ -223,13 +233,13 @@ func (m MultiPolygon) AppendWKT(dst []byte) []byte {
 // IsSimple returns true if this geometry contains no anomalous geometry
 // points, such as self intersection or self tangency. Because MultiPolygons
 // are always simple, this method always returns true.
-func (m MultiPolygon) IsSimple() bool {
+func (m multiPolygon) IsSimple() bool {
 	return true
 }
 
 // IsEmpty return true if and only if this MultiPolygon doesn't contain any
 // Polygons, or only contains empty Polygons.
-func (m MultiPolygon) IsEmpty() bool {
+func (m multiPolygon) IsEmpty() bool {
 	for _, p := range m.polys {
 		if !p.IsEmpty() {
 			return false
@@ -239,7 +249,7 @@ func (m MultiPolygon) IsEmpty() bool {
 }
 
 // Envelope returns the Envelope that most tightly surrounds the geometry.
-func (m MultiPolygon) Envelope() Envelope {
+func (m multiPolygon) Envelope() Envelope {
 	var env Envelope
 	for _, poly := range m.polys {
 		env = env.ExpandToIncludeEnvelope(poly.Envelope())
@@ -249,14 +259,14 @@ func (m MultiPolygon) Envelope() Envelope {
 
 // Boundary returns the spatial boundary of this MultiPolygon. This is the
 // MultiLineString containing the boundaries of the MultiPolygon's elements.
-func (m MultiPolygon) Boundary() MultiLineString {
+func (m multiPolygon) Boundary() MultiLineString {
 	var n int
 	for _, p := range m.polys {
-		n += len(p.rings)
+		n += len(p.getRings())
 	}
 	bounds := make([]LineString, 0, n)
 	for _, p := range m.polys {
-		for _, r := range p.rings {
+		for _, r := range p.getRings() {
 			bounds = append(bounds, r.Force2D())
 		}
 	}
@@ -265,7 +275,7 @@ func (m MultiPolygon) Boundary() MultiLineString {
 
 // Value implements the database/sql/driver.Valuer interface by returning the
 // WKB (Well Known Binary) representation of this Geometry.
-func (m MultiPolygon) Value() (driver.Value, error) {
+func (m multiPolygon) Value() (driver.Value, error) {
 	return m.AsBinary(), nil
 }
 
@@ -278,18 +288,18 @@ func (m MultiPolygon) Value() (driver.Value, error) {
 // ConstructionOptions are needed, then the value should be scanned into a byte
 // slice and then UnmarshalWKB called manually (passing in the
 // ConstructionOptions as desired).
-func (m *MultiPolygon) Scan(src interface{}) error {
+func (m *multiPolygon) Scan(src interface{}) error {
 	return scanAsType(src, m, TypeMultiPolygon)
 }
 
 // AsBinary returns the WKB (Well Known Text) representation of the geometry.
-func (m MultiPolygon) AsBinary() []byte {
+func (m multiPolygon) AsBinary() []byte {
 	return m.AppendWKB(nil)
 }
 
 // AppendWKB appends the WKB (Well Known Text) representation of the geometry
 // to the input slice.
-func (m MultiPolygon) AppendWKB(dst []byte) []byte {
+func (m multiPolygon) AppendWKB(dst []byte) []byte {
 	marsh := newWKBMarshaller(dst)
 	marsh.writeByteOrder()
 	marsh.writeGeomType(TypeMultiPolygon, m.ctype)
@@ -304,13 +314,13 @@ func (m MultiPolygon) AppendWKB(dst []byte) []byte {
 
 // ConvexHull returns the geometry representing the smallest convex geometry
 // that contains this geometry.
-func (m MultiPolygon) ConvexHull() Geometry {
+func (m multiPolygon) ConvexHull() Geometry {
 	return convexHull(m.AsGeometry())
 }
 
 // MarshalJSON implements the encoding/json.Marshaller interface by encoding
 // this geometry as a GeoJSON geometry object.
-func (m MultiPolygon) MarshalJSON() ([]byte, error) {
+func (m multiPolygon) MarshalJSON() ([]byte, error) {
 	var dst []byte
 	dst = append(dst, `{"type":"MultiPolygon","coordinates":`...)
 	dst = appendGeoJSONSequenceMatrix(dst, m.Coordinates())
@@ -320,7 +330,7 @@ func (m MultiPolygon) MarshalJSON() ([]byte, error) {
 
 // Coordinates returns the coordinates of each constituent Polygon of the
 // MultiPolygon.
-func (m MultiPolygon) Coordinates() [][]Sequence {
+func (m multiPolygon) Coordinates() [][]Sequence {
 	numPolys := m.NumPolygons()
 	coords := make([][]Sequence, numPolys)
 	for i := 0; i < numPolys; i++ {
@@ -330,12 +340,12 @@ func (m MultiPolygon) Coordinates() [][]Sequence {
 }
 
 // TransformXY transforms this MultiPolygon into another MultiPolygon according to fn.
-func (m MultiPolygon) TransformXY(fn func(XY) XY, opts ...ConstructorOption) (MultiPolygon, error) {
+func (m multiPolygon) TransformXY(fn func(XY) XY, opts ...ConstructorOption) (MultiPolygon, error) {
 	polys := make([]Polygon, m.NumPolygons())
 	for i := range polys {
 		transformed, err := m.PolygonN(i).TransformXY(fn, opts...)
 		if err != nil {
-			return MultiPolygon{}, wrapTransformed(err)
+			return multiPolygon{}, wrapTransformed(err)
 		}
 		polys[i] = transformed
 	}
@@ -344,7 +354,7 @@ func (m MultiPolygon) TransformXY(fn func(XY) XY, opts ...ConstructorOption) (Mu
 }
 
 // Area in the case of a MultiPolygon is the sum of the areas of its polygons.
-func (m MultiPolygon) Area(opts ...AreaOption) float64 {
+func (m multiPolygon) Area(opts ...AreaOption) float64 {
 	var area float64
 	n := m.NumPolygons()
 	for i := 0; i < n; i++ {
@@ -355,7 +365,7 @@ func (m MultiPolygon) Area(opts ...AreaOption) float64 {
 
 // Centroid returns the multi polygon's centroid point. It returns the empty
 // Point if the multi polygon is empty.
-func (m MultiPolygon) Centroid() Point {
+func (m multiPolygon) Centroid() Point {
 	if m.IsEmpty() {
 		return NewEmptyPoint(DimXY)
 	}
@@ -380,38 +390,38 @@ func (m MultiPolygon) Centroid() Point {
 
 // Reverse in the case of MultiPolygon outputs the component polygons in their original order,
 // each individually reversed.
-func (m MultiPolygon) Reverse() MultiPolygon {
+func (m multiPolygon) Reverse() MultiPolygon {
 	polys := make([]Polygon, len(m.polys))
 	// Form the reversed slice.
 	for i := 0; i < len(m.polys); i++ {
 		polys[i] = m.polys[i].Reverse()
 	}
-	return MultiPolygon{polys, m.ctype}
+	return multiPolygon{polys, m.ctype}
 }
 
 // CoordinatesType returns the CoordinatesType used to represent points making
 // up the geometry.
-func (m MultiPolygon) CoordinatesType() CoordinatesType {
+func (m multiPolygon) CoordinatesType() CoordinatesType {
 	return m.ctype
 }
 
 // ForceCoordinatesType returns a new MultiPolygon with a different CoordinatesType. If a
 // dimension is added, then new values are populated with 0.
-func (m MultiPolygon) ForceCoordinatesType(newCType CoordinatesType) MultiPolygon {
+func (m multiPolygon) ForceCoordinatesType(newCType CoordinatesType) MultiPolygon {
 	flat := make([]Polygon, len(m.polys))
 	for i := range m.polys {
 		flat[i] = m.polys[i].ForceCoordinatesType(newCType)
 	}
-	return MultiPolygon{flat, newCType}
+	return multiPolygon{flat, newCType}
 }
 
 // Force2D returns a copy of the MultiPolygon with Z and M values removed.
-func (m MultiPolygon) Force2D() MultiPolygon {
+func (m multiPolygon) Force2D() MultiPolygon {
 	return m.ForceCoordinatesType(DimXY)
 }
 
 // PointOnSurface returns a Point on the interior of the MultiPolygon.
-func (m MultiPolygon) PointOnSurface() Point {
+func (m multiPolygon) PointOnSurface() Point {
 	var (
 		bestWidth float64
 		bestPoint Point
@@ -433,26 +443,26 @@ func (m MultiPolygon) PointOnSurface() Point {
 // ForceCW returns the equivalent MultiPolygon that has its exterior rings in a
 // clockwise orientation and any inner rings in a counter-clockwise
 // orientation.
-func (m MultiPolygon) ForceCW() MultiPolygon {
+func (m multiPolygon) ForceCW() MultiPolygon {
 	return m.forceOrientation(true)
 }
 
 // ForceCCW returns the equivalent MultiPolygon that has its exterior rings in
 // a counter-clockwise orientation and any inner rings in a clockwise
 // orientation.
-func (m MultiPolygon) ForceCCW() MultiPolygon {
+func (m multiPolygon) ForceCCW() MultiPolygon {
 	return m.forceOrientation(false)
 }
 
-func (m MultiPolygon) forceOrientation(forceCW bool) MultiPolygon {
+func (m multiPolygon) forceOrientation(forceCW bool) MultiPolygon {
 	polys := make([]Polygon, len(m.polys))
 	for i, poly := range m.polys {
 		polys[i] = poly.forceOrientation(forceCW)
 	}
-	return MultiPolygon{polys, m.ctype}
+	return multiPolygon{polys, m.ctype}
 }
 
-func (m MultiPolygon) controlPoints() int {
+func (m multiPolygon) controlPoints() int {
 	var sum int
 	for _, p := range m.polys {
 		sum += p.controlPoints()
@@ -461,7 +471,7 @@ func (m MultiPolygon) controlPoints() int {
 }
 
 // Dump returns the MultiPolygon represented as a Polygon slice.
-func (m MultiPolygon) Dump() []Polygon {
+func (m multiPolygon) Dump() []Polygon {
 	ps := make([]Polygon, len(m.polys))
 	copy(ps, m.polys)
 	return ps
@@ -469,10 +479,10 @@ func (m MultiPolygon) Dump() []Polygon {
 
 // DumpCoordinates returns the points making up the rings in a MultiPolygon as
 // a Sequence.
-func (m MultiPolygon) DumpCoordinates() Sequence {
+func (m multiPolygon) DumpCoordinates() Sequence {
 	var n int
 	for _, p := range m.polys {
-		for _, r := range p.rings {
+		for _, r := range p.getRings() {
 			n += r.Coordinates().Length()
 		}
 	}
@@ -480,7 +490,7 @@ func (m MultiPolygon) DumpCoordinates() Sequence {
 	coords := make([]float64, 0, n*ctype.Dimension())
 
 	for _, p := range m.polys {
-		for _, r := range p.rings {
+		for _, r := range p.getRings() {
 			coords = r.Coordinates().appendAllPoints(coords)
 		}
 	}
@@ -491,7 +501,7 @@ func (m MultiPolygon) DumpCoordinates() Sequence {
 }
 
 // Summary returns a text summary of the MultiPolygon following a similar format to https://postgis.net/docs/ST_Summary.html.
-func (m MultiPolygon) Summary() string {
+func (m multiPolygon) Summary() string {
 	numPoints := m.DumpCoordinates().Length()
 
 	var polygonSuffix string
@@ -514,6 +524,6 @@ func (m MultiPolygon) Summary() string {
 }
 
 // String returns the string representation of the MultiPolygon.
-func (m MultiPolygon) String() string {
+func (m multiPolygon) String() string {
 	return m.Summary()
 }

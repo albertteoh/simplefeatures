@@ -60,6 +60,10 @@ func (c geometryCollection) NumGeometries() int {
 	return len(c.geoms)
 }
 
+func (c geometryCollection) IsSimple() bool {
+	return false
+}
+
 // NumTotalGeometries gives the total number of Geometry elements in the GeometryCollection.
 // If there are GeometryCollection-type child geometries, this will recursively count its children.
 func (c geometryCollection) NumTotalGeometries() int {
@@ -233,6 +237,10 @@ func (c geometryCollection) TransformXY(fn func(XY) XY, opts ...ConstructorOptio
 		}
 	}
 	return geometryCollection{transformed, c.ctype}, nil
+}
+
+func (c geometryCollection) reverse() Geometryer {
+	return c.Reverse()
 }
 
 // Reverse in the case of GeometryCollection reverses each component and also

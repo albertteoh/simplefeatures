@@ -27,8 +27,20 @@ import (
 type Polygon interface {
 	Geometryer
 
-	ForceCoordinatesType(newCType CoordinatesType) Polygon
 	Coordinates() []Sequence
+	ForceCoordinatesType(newCType CoordinatesType) Polygon
+	ExteriorRing() LineString
+	Boundary() MultiLineString
+	Reverse() Polygon
+	TransformXY(fn func(XY) XY, opts ...ConstructorOption) (Polygon, error)
+	Area(opts ...AreaOption) float64
+	NumRings() int
+
+	getRings() []LineString
+	reverse() Geometryer
+	appendWKTBody(dst []byte) []byte
+	forceOrientation(forceCW bool) Polygon
+	controlPoints() int
 }
 
 type polygon struct {
@@ -163,7 +175,15 @@ func validatePolygon(rings []LineString, opts ctorOptionSet) error {
 	return nil
 }
 
-func (m polygon) Length() int {
+func (p polygon) reverse() Geometryer {
+	return p.Reverse()
+}
+
+func (p polygon) getRings() []LineString {
+	return p.getRings()
+}
+
+func (p polygon) Length() float64 {
 	return 0
 }
 
@@ -181,7 +201,7 @@ func (p polygon) AsGeometry() Geometry {
 // is empty, then it returns the empty LineString.
 func (p polygon) ExteriorRing() LineString {
 	if p.IsEmpty() {
-		return LineString{}.ForceCoordinatesType(p.ctype)
+		return lineString{}.ForceCoordinatesType(p.ctype)
 	}
 	return p.rings[0]
 }
