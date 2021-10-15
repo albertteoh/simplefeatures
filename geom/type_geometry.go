@@ -212,49 +212,57 @@ func (g Geometry) AsMultiPolygon() MultiPolygon {
 }
 
 // AsText returns the WKT (Well Known Text) representation of this geometry.
-//func (g Geometry) AsText() string {
-//	switch g.gtype {
-//	case TypeGeometryCollection:
-//		return g.AsGeometryCollection().AsText()
-//	case TypePoint:
-//		return g.AsPoint().AsText()
-//	case TypeLineString:
-//		return g.AsLineString().AsText()
-//	case TypePolygon:
-//		return g.AsPolygon().AsText()
-//	case TypeMultiPoint:
-//		return g.AsMultiPoint().AsText()
-//	case TypeMultiLineString:
-//		return g.AsMultiLineString().AsText()
-//	case TypeMultiPolygon:
-//		return g.AsMultiPolygon().AsText()
-//	default:
-//		panic("unknown geometry: " + g.gtype.String())
-//	}
-//}
+func (g Geometry) AsText() string {
+	//switch g.gtype {
+	//case TypeGeometryCollection:
+	//	return g.AsGeometryCollection().AsText()
+	//case TypePoint:
+	//	return g.AsPoint().AsText()
+	//case TypeLineString:
+	//	return g.AsLineString().AsText()
+	//case TypePolygon:
+	//	return g.AsPolygon().AsText()
+	//case TypeMultiPoint:
+	//	return g.AsMultiPoint().AsText()
+	//case TypeMultiLineString:
+	//	return g.AsMultiLineString().AsText()
+	//case TypeMultiPolygon:
+	//	return g.AsMultiPolygon().AsText()
+	//default:
+	//	panic("unknown geometry: " + g.gtype.String())
+	//}
+	if g.Geometryer == nil {
+		g.Geometryer = &geometryCollection{}
+	}
+	return g.Geometryer.AsText()
+}
 
 // MarshalJSON implements the encoding/json.Marshaller interface by encoding
 // this geometry as a GeoJSON geometry object.
-//func (g Geometry) MarshalJSON() ([]byte, error) {
-//	switch g.gtype {
-//	case TypeGeometryCollection:
-//		return g.AsGeometryCollection().MarshalJSON()
-//	case TypePoint:
-//		return g.AsPoint().MarshalJSON()
-//	case TypeLineString:
-//		return g.AsLineString().MarshalJSON()
-//	case TypePolygon:
-//		return g.AsPolygon().MarshalJSON()
-//	case TypeMultiPoint:
-//		return g.AsMultiPoint().MarshalJSON()
-//	case TypeMultiLineString:
-//		return g.AsMultiLineString().MarshalJSON()
-//	case TypeMultiPolygon:
-//		return g.AsMultiPolygon().MarshalJSON()
-//	default:
-//		panic("unknown geometry: " + g.gtype.String())
-//	}
-//}
+func (g Geometry) MarshalJSON() ([]byte, error) {
+	//	switch g.gtype {
+	//	case TypeGeometryCollection:
+	//		return g.AsGeometryCollection().MarshalJSON()
+	//	case TypePoint:
+	//		return g.AsPoint().MarshalJSON()
+	//	case TypeLineString:
+	//		return g.AsLineString().MarshalJSON()
+	//	case TypePolygon:
+	//		return g.AsPolygon().MarshalJSON()
+	//	case TypeMultiPoint:
+	//		return g.AsMultiPoint().MarshalJSON()
+	//	case TypeMultiLineString:
+	//		return g.AsMultiLineString().MarshalJSON()
+	//	case TypeMultiPolygon:
+	//		return g.AsMultiPolygon().MarshalJSON()
+	//	default:
+	//		panic("unknown geometry: " + g.gtype.String())
+	//	}
+	if g.Geometryer == nil {
+		g.Geometryer = &geometryCollection{}
+	}
+	return g.Geometryer.MarshalJSON()
+}
 
 // UnmarshalJSON implements the encoding/json.Unmarshaller interface by
 // parsing the JSON stream as GeoJSON geometry object.
@@ -279,7 +287,7 @@ func (g Geometry) AppendWKT(dst []byte) []byte {
 	//case TypeGeometryCollection:
 	//	return (*GeometryCollection)(g.ptr).AppendWKT(dst)
 	//case TypePoint:
-	//	return (*Point)(g.ptr).AppendWKT(dst)
+	//	return (*point)(g.ptr).AppendWKT(dst)
 	//case TypeLineString:
 	//	return (*LineString)(g.ptr).AppendWKT(dst)
 	//case TypePolygon:
@@ -292,6 +300,9 @@ func (g Geometry) AppendWKT(dst []byte) []byte {
 	//	return (*MultiPolygon)(g.ptr).AppendWKT(dst)
 	//default:
 	//	panic("unknown geometry: " + g.gtype.String())
+	if g.Geometryer == nil {
+		g.Geometryer = &geometryCollection{}
+	}
 	//}
 	return g.Geometryer.AppendWKT(dst)
 }
@@ -322,6 +333,9 @@ func (g Geometry) AppendWKB(dst []byte) []byte {
 	//default:
 	//	panic("unknown geometry: " + g.gtype.String())
 	//}
+	if g.Geometryer == nil {
+		g.Geometryer = &geometryCollection{}
+	}
 	return g.Geometryer.AppendWKB(dst)
 }
 
@@ -375,19 +389,19 @@ func scanAsType(src interface{}, dst interface{}, typ GeometryType) error {
 	}
 	switch typ {
 	case TypeGeometryCollection:
-		*dst.(*GeometryCollection) = g.AsGeometryCollection()
+		*dst.(*geometryCollection) = *g.AsGeometryCollection().(*geometryCollection)
 	case TypePoint:
-		*dst.(*Point) = g.AsPoint()
+		*dst.(*point) = *g.AsPoint().(*point)
 	case TypeLineString:
-		*dst.(*LineString) = g.AsLineString()
+		*dst.(*lineString) = *g.AsLineString().(*lineString)
 	case TypePolygon:
-		*dst.(*Polygon) = g.AsPolygon()
+		*dst.(*polygon) = *g.AsPolygon().(*polygon)
 	case TypeMultiPoint:
-		*dst.(*MultiPoint) = g.AsMultiPoint()
+		*dst.(*multiPoint) = *g.AsMultiPoint().(*multiPoint)
 	case TypeMultiLineString:
-		*dst.(*MultiLineString) = g.AsMultiLineString()
+		*dst.(*multiLineString) = *g.AsMultiLineString().(*multiLineString)
 	case TypeMultiPolygon:
-		*dst.(*MultiPolygon) = g.AsMultiPolygon()
+		*dst.(*multiPolygon) = *g.AsMultiPolygon().(*multiPolygon)
 	default:
 		panic("unknown geometry type: " + typ.String())
 	}
@@ -412,15 +426,15 @@ func (g Geometry) Dimension() int {
 	//default:
 	//	panic("unknown geometry: " + g.gtype.String())
 	//}
+	if g.Geometryer == nil {
+		g.Geometryer = &geometryCollection{}
+	}
 	return g.Geometryer.Dimension()
 }
 
 // IsEmpty returns true if this geometry is empty. Collection types are empty
 // if they have zero elements or only contain empty elements.
 func (g Geometry) IsEmpty() bool {
-	if g.Type() == TypeGeometryCollection {
-		return (&geometryCollection{}).IsEmpty()
-	}
 	//switch g.gtype {
 	//case TypeGeometryCollection:
 	//	return g.AsGeometryCollection().IsEmpty()
@@ -439,6 +453,9 @@ func (g Geometry) IsEmpty() bool {
 	//default:
 	//	panic("unknown geometry: " + g.gtype.String())
 	//}
+	if g.Geometryer == nil {
+		g.Geometryer = &geometryCollection{}
+	}
 	return g.Geometryer.IsEmpty()
 }
 
@@ -463,6 +480,9 @@ func (g Geometry) Envelope() Envelope {
 	//default:
 	//	panic("unknown geometry: " + g.gtype.String())
 	//}
+	if g.Geometryer == nil {
+		g.Geometryer = &geometryCollection{}
+	}
 	return g.Geometryer.Envelope()
 }
 
@@ -583,6 +603,9 @@ func (g Geometry) Centroid() Point {
 	//default:
 	//	panic("unknown geometry: " + g.gtype.String())
 	//}
+	if g.Geometryer == nil {
+		g.Geometryer = &geometryCollection{}
+	}
 	return g.Geometryer.Centroid()
 }
 
@@ -646,6 +669,9 @@ func (g Geometry) CoordinatesType() CoordinatesType {
 	//default:
 	//	panic("unknown geometry: " + g.gtype.String())
 	//}
+	if g.Geometryer == nil {
+		g.Geometryer = &geometryCollection{}
+	}
 	return g.Geometryer.CoordinatesType()
 }
 
@@ -697,6 +723,9 @@ func (g Geometry) PointOnSurface() Point {
 	//default:
 	//	panic("unknown geometry: " + g.gtype.String())
 	//}
+	if g.Geometryer == nil {
+		g.Geometryer = &geometryCollection{}
+	}
 	return g.Geometryer.PointOnSurface()
 }
 
@@ -819,6 +848,9 @@ func (g Geometry) DumpCoordinates() Sequence {
 	//default:
 	//	panic("unknown type: " + g.Type().String())
 	//}
+	if g.Geometryer == nil {
+		g.Geometryer = &geometryCollection{}
+	}
 	return g.Geometryer.DumpCoordinates()
 }
 
@@ -842,6 +874,9 @@ func (g Geometry) Summary() string {
 	//default:
 	//	panic("unknown type: " + g.Type().String())
 	//}
+	if g.Geometryer == nil {
+		g.Geometryer = &geometryCollection{}
+	}
 	return g.Geometryer.Summary()
 }
 

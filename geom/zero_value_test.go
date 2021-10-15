@@ -8,37 +8,37 @@ import (
 
 func TestZeroValueGeometries(t *testing.T) {
 	t.Run("Point", func(t *testing.T) {
-		var pt Point
+		pt := newEmptyPoint(t)
 		expectBoolEq(t, pt.IsEmpty(), true)
 		expectCoordinatesTypeEq(t, pt.CoordinatesType(), DimXY)
 	})
 	t.Run("LineString", func(t *testing.T) {
-		var ls LineString
+		ls := newEmptyLineString(t)
 		expectIntEq(t, ls.Coordinates().Length(), 0)
 		expectCoordinatesTypeEq(t, ls.CoordinatesType(), DimXY)
 	})
 	t.Run("Polygon", func(t *testing.T) {
-		var p Polygon
+		p := newEmptyPolygon(t)
 		expectBoolEq(t, p.IsEmpty(), true)
 		expectCoordinatesTypeEq(t, p.CoordinatesType(), DimXY)
 	})
 	t.Run("MultiPoint", func(t *testing.T) {
-		var mp MultiPoint
+		mp := newEmptyMultiPoint(t)
 		expectIntEq(t, mp.NumPoints(), 0)
 		expectCoordinatesTypeEq(t, mp.CoordinatesType(), DimXY)
 	})
 	t.Run("MultiLineString", func(t *testing.T) {
-		var mls MultiLineString
+		mls := newEmptyMultiLineString(t)
 		expectIntEq(t, mls.NumLineStrings(), 0)
 		expectCoordinatesTypeEq(t, mls.CoordinatesType(), DimXY)
 	})
 	t.Run("MultiPolygon", func(t *testing.T) {
-		var mp MultiPolygon
+		mp := newEmptyMultiPolygon(t)
 		expectIntEq(t, mp.NumPolygons(), 0)
 		expectCoordinatesTypeEq(t, mp.CoordinatesType(), DimXY)
 	})
 	t.Run("GeometryCollection", func(t *testing.T) {
-		var gc GeometryCollection
+		gc := newEmptyGeometryCollection(t)
 		expectIntEq(t, gc.NumGeometries(), 0)
 		expectCoordinatesTypeEq(t, gc.CoordinatesType(), DimXY)
 	})

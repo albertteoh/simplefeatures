@@ -272,7 +272,8 @@ func TestEnvelopeContains(t *testing.T) {
 			}(),
 		},
 	} {
-		t.Run(fmt.Sprintf("env %v", tc.env.AsGeometry().AsText()), func(t *testing.T) {
+		name := fmt.Sprintf("env %v", tc.env.AsGeometry().AsText())
+		t.Run(name, func(t *testing.T) {
 			for xy, want := range tc.subtests {
 				t.Run(fmt.Sprintf("xy %v want %v", xy, want), func(t *testing.T) {
 					got := tc.env.Contains(xy)

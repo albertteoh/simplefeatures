@@ -66,7 +66,7 @@ func TestSQLValueConcrete(t *testing.T) {
 }
 
 func TestSQLScanConcrete(t *testing.T) {
-	for i, tc := range []struct {
+	for _, tc := range []struct {
 		wkt      string
 		concrete interface {
 			AsText() string
@@ -78,10 +78,10 @@ func TestSQLScanConcrete(t *testing.T) {
 		{"LINESTRING(0 1,1 0)", newEmptyLineString(t)},
 		{"MULTILINESTRING((0 1,1 0))", newEmptyMultiLineString(t)},
 		{"POLYGON((0 0,1 0,0 1,0 0))", newEmptyPolygon(t)},
-		{"MULTIPOLYGON(((0 0,1 0,0 1,0 0)))", newEmptyPolygon(t)},
+		{"MULTIPOLYGON(((0 0,1 0,0 1,0 0)))", newEmptyMultiPolygon(t)},
 		{"GEOMETRYCOLLECTION(MULTIPOLYGON(((0 0,1 0,0 1,0 0))))", newEmptyGeometryCollection(t)},
 	} {
-		t.Run(strconv.Itoa(i), func(t *testing.T) {
+		t.Run(tc.wkt, func(t *testing.T) {
 			wkb := geomFromWKT(t, tc.wkt).AsBinary()
 			err := tc.concrete.Scan(wkb)
 			expectNoErr(t, err)
