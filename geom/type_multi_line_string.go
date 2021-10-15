@@ -14,14 +14,17 @@ import (
 type MultiLineString interface {
 	Geometryer
 
+	ForceCoordinatesType(newCType CoordinatesType) MultiLineString
 	Boundary() MultiPoint
 	Force2D() MultiLineString
 	Reverse() MultiLineString
 	NumLineStrings() int
 	LineStringN(int) LineString
 	Coordinates() []Sequence
+	TransformXY(fn func(XY) XY, opts ...ConstructorOption) (MultiLineString, error)
 
 	asLines() []line
+	controlPoints() int
 }
 
 type multiLineString struct {
@@ -49,6 +52,10 @@ func NewMultiLineString(lines []LineString, opts ...ConstructorOption) MultiLine
 	}
 
 	return multiLineString{lines, ctype}
+}
+
+func (m multiLineString) Dimension() int {
+	return 1
 }
 
 // Type returns the GeometryType for a MultiLineString

@@ -17,6 +17,11 @@ type Geometryer interface {
 	IsSimple() bool
 	Envelope() Envelope
 	AppendWKB(dst []byte) []byte
+	AppendWKT(dst []byte) []byte
+	Dimension() int
+	PointOnSurface() Point
+	DumpCoordinates() Sequence
+	Summary() string
 
 	// Length gives the length of a Line, LineString, or MultiLineString
 	// or the sum of the lengths of the components of a GeometryCollection.
@@ -265,24 +270,25 @@ func (g *Geometry) UnmarshalJSON(p []byte) error {
 // AppendWKT appends the WKT (Well Known Text) representation of this geometry
 // to the input byte slice.
 func (g Geometry) AppendWKT(dst []byte) []byte {
-	switch g.gtype {
-	case TypeGeometryCollection:
-		return (*GeometryCollection)(g.ptr).AppendWKT(dst)
-	case TypePoint:
-		return (*Point)(g.ptr).AppendWKT(dst)
-	case TypeLineString:
-		return (*LineString)(g.ptr).AppendWKT(dst)
-	case TypePolygon:
-		return (*Polygon)(g.ptr).AppendWKT(dst)
-	case TypeMultiPoint:
-		return (*MultiPoint)(g.ptr).AppendWKT(dst)
-	case TypeMultiLineString:
-		return (*MultiLineString)(g.ptr).AppendWKT(dst)
-	case TypeMultiPolygon:
-		return (*MultiPolygon)(g.ptr).AppendWKT(dst)
-	default:
-		panic("unknown geometry: " + g.gtype.String())
-	}
+	//switch g.gtype {
+	//case TypeGeometryCollection:
+	//	return (*GeometryCollection)(g.ptr).AppendWKT(dst)
+	//case TypePoint:
+	//	return (*Point)(g.ptr).AppendWKT(dst)
+	//case TypeLineString:
+	//	return (*LineString)(g.ptr).AppendWKT(dst)
+	//case TypePolygon:
+	//	return (*Polygon)(g.ptr).AppendWKT(dst)
+	//case TypeMultiPoint:
+	//	return (*MultiPoint)(g.ptr).AppendWKT(dst)
+	//case TypeMultiLineString:
+	//	return (*MultiLineString)(g.ptr).AppendWKT(dst)
+	//case TypeMultiPolygon:
+	//	return (*MultiPolygon)(g.ptr).AppendWKT(dst)
+	//default:
+	//	panic("unknown geometry: " + g.gtype.String())
+	//}
+	return g.Geometryer.AppendWKT(dst)
 }
 
 // AsBinary returns the WKB (Well Known Text) representation of the geometry.
@@ -293,24 +299,25 @@ func (g Geometry) AsBinary() []byte {
 // AppendWKB appends the WKB (Well Known Text) representation of the geometry
 // to the input slice.
 func (g Geometry) AppendWKB(dst []byte) []byte {
-	switch g.gtype {
-	case TypeGeometryCollection:
-		return g.AsGeometryCollection().AppendWKB(dst)
-	case TypePoint:
-		return g.AsPoint().AppendWKB(dst)
-	case TypeLineString:
-		return g.AsLineString().AppendWKB(dst)
-	case TypePolygon:
-		return g.AsPolygon().AppendWKB(dst)
-	case TypeMultiPoint:
-		return g.AsMultiPoint().AppendWKB(dst)
-	case TypeMultiLineString:
-		return g.AsMultiLineString().AppendWKB(dst)
-	case TypeMultiPolygon:
-		return g.AsMultiPolygon().AppendWKB(dst)
-	default:
-		panic("unknown geometry: " + g.gtype.String())
-	}
+	//switch g.gtype {
+	//case TypeGeometryCollection:
+	//	return g.AsGeometryCollection().AppendWKB(dst)
+	//case TypePoint:
+	//	return g.AsPoint().AppendWKB(dst)
+	//case TypeLineString:
+	//	return g.AsLineString().AppendWKB(dst)
+	//case TypePolygon:
+	//	return g.AsPolygon().AppendWKB(dst)
+	//case TypeMultiPoint:
+	//	return g.AsMultiPoint().AppendWKB(dst)
+	//case TypeMultiLineString:
+	//	return g.AsMultiLineString().AppendWKB(dst)
+	//case TypeMultiPolygon:
+	//	return g.AsMultiPolygon().AppendWKB(dst)
+	//default:
+	//	panic("unknown geometry: " + g.gtype.String())
+	//}
+	return g.Geometryer.AppendWKB(dst)
 }
 
 // Value implements the database/sql/driver.Valuer interface by returning the
@@ -388,64 +395,67 @@ func scanAsType(src interface{}, dst interface{}, typ GeometryType) error {
 // GeometryCollections it is the maximum dimension over the collection (or 0 if
 // the collection is the empty collection).
 func (g Geometry) Dimension() int {
-	switch g.gtype {
-	case TypeGeometryCollection:
-		return g.AsGeometryCollection().Dimension()
-	case TypePoint, TypeMultiPoint:
-		return 0
-	case TypeLineString, TypeMultiLineString:
-		return 1
-	case TypePolygon, TypeMultiPolygon:
-		return 2
-	default:
-		panic("unknown geometry: " + g.gtype.String())
-	}
+	//switch g.gtype {
+	//case TypeGeometryCollection:
+	//	return g.AsGeometryCollection().Dimension()
+	//case TypePoint, TypeMultiPoint:
+	//	return 0
+	//case TypeLineString, TypeMultiLineString:
+	//	return 1
+	//case TypePolygon, TypeMultiPolygon:
+	//	return 2
+	//default:
+	//	panic("unknown geometry: " + g.gtype.String())
+	//}
+	return g.Geometryer.Dimension()
 }
 
 // IsEmpty returns true if this geometry is empty. Collection types are empty
 // if they have zero elements or only contain empty elements.
 func (g Geometry) IsEmpty() bool {
-	switch g.gtype {
-	case TypeGeometryCollection:
-		return g.AsGeometryCollection().IsEmpty()
-	case TypePoint:
-		return g.AsPoint().IsEmpty()
-	case TypeLineString:
-		return g.AsLineString().IsEmpty()
-	case TypePolygon:
-		return g.AsPolygon().IsEmpty()
-	case TypeMultiPoint:
-		return g.AsMultiPoint().IsEmpty()
-	case TypeMultiLineString:
-		return g.AsMultiLineString().IsEmpty()
-	case TypeMultiPolygon:
-		return g.AsMultiPolygon().IsEmpty()
-	default:
-		panic("unknown geometry: " + g.gtype.String())
-	}
+	//switch g.gtype {
+	//case TypeGeometryCollection:
+	//	return g.AsGeometryCollection().IsEmpty()
+	//case TypePoint:
+	//	return g.AsPoint().IsEmpty()
+	//case TypeLineString:
+	//	return g.AsLineString().IsEmpty()
+	//case TypePolygon:
+	//	return g.AsPolygon().IsEmpty()
+	//case TypeMultiPoint:
+	//	return g.AsMultiPoint().IsEmpty()
+	//case TypeMultiLineString:
+	//	return g.AsMultiLineString().IsEmpty()
+	//case TypeMultiPolygon:
+	//	return g.AsMultiPolygon().IsEmpty()
+	//default:
+	//	panic("unknown geometry: " + g.gtype.String())
+	//}
+	return g.Geometryer.IsEmpty()
 }
 
 // Envelope returns the axis aligned bounding box that most tightly surrounds
 // the geometry.
 func (g Geometry) Envelope() Envelope {
-	switch g.gtype {
-	case TypeGeometryCollection:
-		return g.AsGeometryCollection().Envelope()
-	case TypePoint:
-		return g.AsPoint().Envelope()
-	case TypeLineString:
-		return g.AsLineString().Envelope()
-	case TypePolygon:
-		return g.AsPolygon().Envelope()
-	case TypeMultiPoint:
-		return g.AsMultiPoint().Envelope()
-	case TypeMultiLineString:
-		return g.AsMultiLineString().Envelope()
-	case TypeMultiPolygon:
-		return g.AsMultiPolygon().Envelope()
-	default:
-		panic("unknown geometry: " + g.gtype.String())
-	}
+	//switch g.gtype {
+	//case TypeGeometryCollection:
+	//	return g.AsGeometryCollection().Envelope()
+	//case TypePoint:
+	//	return g.AsPoint().Envelope()
+	//case TypeLineString:
+	//	return g.AsLineString().Envelope()
+	//case TypePolygon:
+	//	return g.AsPolygon().Envelope()
+	//case TypeMultiPoint:
+	//	return g.AsMultiPoint().Envelope()
+	//case TypeMultiLineString:
+	//	return g.AsMultiLineString().Envelope()
+	//case TypeMultiPolygon:
+	//	return g.AsMultiPolygon().Envelope()
+	//default:
+	//	panic("unknown geometry: " + g.gtype.String())
+	//}
+	return g.Geometryer.Envelope()
 }
 
 // Boundary returns the Geometry representing the spatial limit of this
@@ -453,7 +463,7 @@ func (g Geometry) Envelope() Envelope {
 // (see the documentation of each concrete Geometry's Boundary method for
 // details).
 func (g Geometry) Boundary() Geometry {
-	switch g.gtype {
+	switch g.Type() {
 	case TypeGeometryCollection:
 		return g.AsGeometryCollection().Boundary().AsGeometry()
 	case TypePoint:
@@ -474,7 +484,7 @@ func (g Geometry) Boundary() Geometry {
 	case TypeMultiPolygon:
 		return g.AsMultiPolygon().Boundary().AsGeometry()
 	default:
-		panic("unknown geometry: " + g.gtype.String())
+		panic("unknown geometry: " + g.Type().String())
 	}
 }
 
@@ -491,7 +501,7 @@ func (g Geometry) ConvexHull() Geometry {
 // types of transformations may result in a validation error if their
 // mapping results in an invalid Geometry.
 func (g Geometry) TransformXY(fn func(XY) XY, opts ...ConstructorOption) (Geometry, error) {
-	switch g.gtype {
+	switch g.Type() {
 	case TypeGeometryCollection:
 		gt, err := g.AsGeometryCollection().TransformXY(fn, opts...)
 		return gt.AsGeometry(), err
@@ -514,7 +524,7 @@ func (g Geometry) TransformXY(fn func(XY) XY, opts ...ConstructorOption) (Geomet
 		gt, err := g.AsMultiPolygon().TransformXY(fn, opts...)
 		return gt.AsGeometry(), err
 	default:
-		panic("unknown geometry: " + g.gtype.String())
+		panic("unknown geometry: " + g.Type().String())
 	}
 }
 
@@ -547,30 +557,31 @@ func (g Geometry) TransformXY(fn func(XY) XY, opts ...ConstructorOption) (Geomet
 // Centroid returns the geometry's centroid Point. If the Geometry is empty,
 // then an empty Point is returned.
 func (g Geometry) Centroid() Point {
-	switch g.gtype {
-	case TypeGeometryCollection:
-		return g.AsGeometryCollection().Centroid()
-	case TypePoint:
-		return g.AsPoint().Centroid()
-	case TypeLineString:
-		return g.AsLineString().Centroid()
-	case TypePolygon:
-		return g.AsPolygon().Centroid()
-	case TypeMultiPoint:
-		return g.AsMultiPoint().Centroid()
-	case TypeMultiLineString:
-		return g.AsMultiLineString().Centroid()
-	case TypeMultiPolygon:
-		return g.AsMultiPolygon().Centroid()
-	default:
-		panic("unknown geometry: " + g.gtype.String())
-	}
+	//switch g.gtype {
+	//case TypeGeometryCollection:
+	//	return g.AsGeometryCollection().Centroid()
+	//case TypePoint:
+	//	return g.AsPoint().Centroid()
+	//case TypeLineString:
+	//	return g.AsLineString().Centroid()
+	//case TypePolygon:
+	//	return g.AsPolygon().Centroid()
+	//case TypeMultiPoint:
+	//	return g.AsMultiPoint().Centroid()
+	//case TypeMultiLineString:
+	//	return g.AsMultiLineString().Centroid()
+	//case TypeMultiPolygon:
+	//	return g.AsMultiPolygon().Centroid()
+	//default:
+	//	panic("unknown geometry: " + g.gtype.String())
+	//}
+	return g.Geometryer.Centroid()
 }
 
 // Area gives the area of the Polygon or MultiPolygon or GeometryCollection.
 // If the Geometry is none of those types, then 0 is returned.
 func (g Geometry) Area(opts ...AreaOption) float64 {
-	switch g.gtype {
+	switch g.Type() {
 	case TypeGeometryCollection:
 		return g.AsGeometryCollection().Area(opts...)
 	case TypePoint:
@@ -586,7 +597,7 @@ func (g Geometry) Area(opts ...AreaOption) float64 {
 	case TypeMultiPolygon:
 		return g.AsMultiPolygon().Area(opts...)
 	default:
-		panic("unknown geometry: " + g.gtype.String())
+		panic("unknown geometry: " + g.Type().String())
 	}
 }
 
@@ -609,47 +620,48 @@ func (g Geometry) Reverse() Geometry {
 // CoordinatesType returns the CoordinatesType used to represent points making
 // up the geometry.
 func (g Geometry) CoordinatesType() CoordinatesType {
-	switch g.gtype {
-	case TypeGeometryCollection:
-		return g.AsGeometryCollection().CoordinatesType()
-	case TypePoint:
-		return g.AsPoint().CoordinatesType()
-	case TypeLineString:
-		return g.AsLineString().CoordinatesType()
-	case TypePolygon:
-		return g.AsPolygon().CoordinatesType()
-	case TypeMultiPoint:
-		return g.AsMultiPoint().CoordinatesType()
-	case TypeMultiLineString:
-		return g.AsMultiLineString().CoordinatesType()
-	case TypeMultiPolygon:
-		return g.AsMultiPolygon().CoordinatesType()
-	default:
-		panic("unknown geometry: " + g.gtype.String())
-	}
+	//switch g.gtype {
+	//case TypeGeometryCollection:
+	//	return g.AsGeometryCollection().CoordinatesType()
+	//case TypePoint:
+	//	return g.AsPoint().CoordinatesType()
+	//case TypeLineString:
+	//	return g.AsLineString().CoordinatesType()
+	//case TypePolygon:
+	//	return g.AsPolygon().CoordinatesType()
+	//case TypeMultiPoint:
+	//	return g.AsMultiPoint().CoordinatesType()
+	//case TypeMultiLineString:
+	//	return g.AsMultiLineString().CoordinatesType()
+	//case TypeMultiPolygon:
+	//	return g.AsMultiPolygon().CoordinatesType()
+	//default:
+	//	panic("unknown geometry: " + g.gtype.String())
+	//}
+	return g.Geometryer.CoordinatesType()
 }
 
 // ForceCoordinatesType returns a new Geometry with a different CoordinatesType. If a
 // dimension is added, then new values are populated with 0.
 func (g Geometry) ForceCoordinatesType(newCType CoordinatesType) Geometry {
-	//switch g.gtype {
-	//case TypeGeometryCollection:
-	//	return g.AsGeometryCollection().ForceCoordinatesType(newCType).AsGeometry()
-	//case TypePoint:
-	//	return g.AsPoint().ForceCoordinatesType(newCType).AsGeometry()
-	//case TypeLineString:
-	//	return g.AsLineString().ForceCoordinatesType(newCType).AsGeometry()
-	//case TypePolygon:
-	//	return g.AsPolygon().ForceCoordinatesType(newCType).AsGeometry()
-	//case TypeMultiPoint:
-	//	return g.AsMultiPoint().ForceCoordinatesType(newCType).AsGeometry()
-	//case TypeMultiLineString:
-	//	return g.AsMultiLineString().ForceCoordinatesType(newCType).AsGeometry()
-	//case TypeMultiPolygon:
-	//	return g.AsMultiPolygon().ForceCoordinatesType(newCType).AsGeometry()
-	//default:
-	//	panic("unknown geometry: " + g.gtype.String())
-	//}
+	switch g.Type() {
+	case TypeGeometryCollection:
+		return g.AsGeometryCollection().ForceCoordinatesType(newCType).AsGeometry()
+	case TypePoint:
+		return g.AsPoint().ForceCoordinatesType(newCType).AsGeometry()
+	case TypeLineString:
+		return g.AsLineString().ForceCoordinatesType(newCType).AsGeometry()
+	case TypePolygon:
+		return g.AsPolygon().ForceCoordinatesType(newCType).AsGeometry()
+	case TypeMultiPoint:
+		return g.AsMultiPoint().ForceCoordinatesType(newCType).AsGeometry()
+	case TypeMultiLineString:
+		return g.AsMultiLineString().ForceCoordinatesType(newCType).AsGeometry()
+	case TypeMultiPolygon:
+		return g.AsMultiPolygon().ForceCoordinatesType(newCType).AsGeometry()
+	default:
+		panic("unknown geometry: " + g.Type().String())
+	}
 }
 
 // Force2D returns a copy of the geometry with Z and M values removed.
@@ -659,24 +671,25 @@ func (g Geometry) Force2D() Geometry {
 
 // PointOnSurface returns a Point that lies inside the geometry.
 func (g Geometry) PointOnSurface() Point {
-	switch g.gtype {
-	case TypeGeometryCollection:
-		return g.AsGeometryCollection().PointOnSurface()
-	case TypePoint:
-		return g.AsPoint().PointOnSurface()
-	case TypeLineString:
-		return g.AsLineString().PointOnSurface()
-	case TypePolygon:
-		return g.AsPolygon().PointOnSurface()
-	case TypeMultiPoint:
-		return g.AsMultiPoint().PointOnSurface()
-	case TypeMultiLineString:
-		return g.AsMultiLineString().PointOnSurface()
-	case TypeMultiPolygon:
-		return g.AsMultiPolygon().PointOnSurface()
-	default:
-		panic("unknown geometry: " + g.gtype.String())
-	}
+	//switch g.gtype {
+	//case TypeGeometryCollection:
+	//	return g.AsGeometryCollection().PointOnSurface()
+	//case TypePoint:
+	//	return g.AsPoint().PointOnSurface()
+	//case TypeLineString:
+	//	return g.AsLineString().PointOnSurface()
+	//case TypePolygon:
+	//	return g.AsPolygon().PointOnSurface()
+	//case TypeMultiPoint:
+	//	return g.AsMultiPoint().PointOnSurface()
+	//case TypeMultiLineString:
+	//	return g.AsMultiLineString().PointOnSurface()
+	//case TypeMultiPolygon:
+	//	return g.AsMultiPolygon().PointOnSurface()
+	//default:
+	//	panic("unknown geometry: " + g.gtype.String())
+	//}
+	return g.Geometryer.PointOnSurface()
 }
 
 // ForceCW returns the equivalent Geometry that has its exterior rings in a
@@ -694,7 +707,7 @@ func (g Geometry) ForceCCW() Geometry {
 }
 
 func (g Geometry) forceOrientation(forceCW bool) Geometry {
-	switch g.gtype {
+	switch g.Type() {
 	case TypePolygon:
 		return g.AsPolygon().forceOrientation(forceCW).AsGeometry()
 	case TypeMultiPolygon:
@@ -707,10 +720,10 @@ func (g Geometry) forceOrientation(forceCW bool) Geometry {
 }
 
 func (g Geometry) controlPoints() int {
-	switch g.gtype {
+	switch g.Type() {
 	case TypeGeometryCollection:
 		var sum int
-		for _, g := range g.AsGeometryCollection().geoms {
+		for _, g := range g.AsGeometryCollection().geometries() {
 			sum += g.controlPoints()
 		}
 		return sum
@@ -727,7 +740,7 @@ func (g Geometry) controlPoints() int {
 	case TypeMultiPolygon:
 		return g.AsMultiPolygon().controlPoints()
 	default:
-		panic("unknown geometry: " + g.gtype.String())
+		panic("unknown geometry: " + g.Type().String())
 	}
 }
 
@@ -780,46 +793,48 @@ func (g Geometry) appendDump(gs []Geometry) []Geometry {
 // DumpCoordinates returns the control points making up the geometry as a
 // Sequence.
 func (g Geometry) DumpCoordinates() Sequence {
-	switch g.gtype {
-	case TypeGeometryCollection:
-		return g.AsGeometryCollection().DumpCoordinates()
-	case TypePoint:
-		return g.AsPoint().DumpCoordinates()
-	case TypeLineString:
-		return g.AsLineString().Coordinates()
-	case TypePolygon:
-		return g.AsPolygon().DumpCoordinates()
-	case TypeMultiPoint:
-		return g.AsMultiPoint().Coordinates()
-	case TypeMultiLineString:
-		return g.AsMultiLineString().DumpCoordinates()
-	case TypeMultiPolygon:
-		return g.AsMultiPolygon().DumpCoordinates()
-	default:
-		panic("unknown type: " + g.Type().String())
-	}
+	//switch g.gtype {
+	//case TypeGeometryCollection:
+	//	return g.AsGeometryCollection().DumpCoordinates()
+	//case TypePoint:
+	//	return g.AsPoint().DumpCoordinates()
+	//case TypeLineString:
+	//	return g.AsLineString().Coordinates()
+	//case TypePolygon:
+	//	return g.AsPolygon().DumpCoordinates()
+	//case TypeMultiPoint:
+	//	return g.AsMultiPoint().Coordinates()
+	//case TypeMultiLineString:
+	//	return g.AsMultiLineString().DumpCoordinates()
+	//case TypeMultiPolygon:
+	//	return g.AsMultiPolygon().DumpCoordinates()
+	//default:
+	//	panic("unknown type: " + g.Type().String())
+	//}
+	return g.Geometryer.DumpCoordinates()
 }
 
 // Summary returns a text summary of the Geometry following a similar format to https://postgis.net/docs/ST_Summary.html.
 func (g Geometry) Summary() string {
-	switch g.gtype {
-	case TypeGeometryCollection:
-		return g.AsGeometryCollection().Summary()
-	case TypePoint:
-		return g.AsPoint().Summary()
-	case TypeLineString:
-		return g.AsLineString().Summary()
-	case TypePolygon:
-		return g.AsPolygon().Summary()
-	case TypeMultiPoint:
-		return g.AsMultiPoint().Summary()
-	case TypeMultiLineString:
-		return g.AsMultiLineString().Summary()
-	case TypeMultiPolygon:
-		return g.AsMultiPolygon().Summary()
-	default:
-		panic("unknown type: " + g.Type().String())
-	}
+	//switch g.gtype {
+	//case TypeGeometryCollection:
+	//	return g.AsGeometryCollection().Summary()
+	//case TypePoint:
+	//	return g.AsPoint().Summary()
+	//case TypeLineString:
+	//	return g.AsLineString().Summary()
+	//case TypePolygon:
+	//	return g.AsPolygon().Summary()
+	//case TypeMultiPoint:
+	//	return g.AsMultiPoint().Summary()
+	//case TypeMultiLineString:
+	//	return g.AsMultiLineString().Summary()
+	//case TypeMultiPolygon:
+	//	return g.AsMultiPolygon().Summary()
+	//default:
+	//	panic("unknown type: " + g.Type().String())
+	//}
+	return g.Geometryer.Summary()
 }
 
 // String returns the string representation of the Geometry.

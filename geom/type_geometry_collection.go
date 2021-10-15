@@ -12,12 +12,17 @@ import (
 type GeometryCollection interface {
 	Geometryer
 
+	ForceCoordinatesType(newCType CoordinatesType) GeometryCollection
+	Area(opts ...AreaOption) float64
+	Boundary() GeometryCollection
 	NumTotalGeometries() int
 	NumGeometries() int
 	GeometryN(n int) Geometry
+	TransformXY(fn func(XY) XY, opts ...ConstructorOption) (GeometryCollection, error)
 
 	walk(fn func(Geometry))
 	geometries() []Geometry
+	forceOrientation(forceCW bool) GeometryCollection
 }
 
 type geometryCollection struct {

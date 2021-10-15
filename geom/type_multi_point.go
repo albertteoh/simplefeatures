@@ -17,6 +17,7 @@ type MultiPoint interface {
 	PointN(n int) Point
 	Force2D() MultiPoint
 	Boundary() GeometryCollection
+	TransformXY(fn func(XY) XY, opts ...ConstructorOption) (MultiPoint, error)
 }
 
 type multiPoint struct {
@@ -277,6 +278,10 @@ func forceCoordinatesTypeOfPointSlice(pts []Point, ctype CoordinatesType) []Poin
 	return cp
 }
 
+func (m multiPoint) Dimension() int {
+	return 0
+}
+
 // Force2D returns a copy of the MultiPoint with Z and M values removed.
 func (m multiPoint) Force2D() MultiPoint {
 	return m.ForceCoordinatesType(DimXY)
@@ -312,15 +317,7 @@ func (m multiPoint) Dump() []Point {
 // DumpCoordinates returns the non-empty points in a MultiPoint represented as
 // a Sequence.
 func (m multiPoint) DumpCoordinates() Sequence {
-	ctype := m.CoordinatesType()
-	nonEmpty := make([]float64, 0, len(m.points)*ctype.Dimension())
-	for _, pt := range m.points {
-		if c, ok := pt.Coordinates(); ok {
-			nonEmpty = c.appendFloat64s(nonEmpty)
-		}
-	}
-	seq := NewSequence(nonEmpty, ctype)
-	return seq
+	return m.Coordinates()
 }
 
 // Summary returns a text summary of the MultiPoint following a similar format to https://postgis.net/docs/ST_Summary.html.

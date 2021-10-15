@@ -27,6 +27,7 @@ type LineString interface {
 	Reverse() LineString
 	IsRing() bool
 	AsMultiLineString() MultiLineString
+	TransformXY(fn func(XY) XY, opts ...ConstructorOption) (LineString, error)
 
 	appendWKTBody(dst []byte) []byte
 	getSeq() Sequence
@@ -82,6 +83,10 @@ func hasAtLeast2DistinctPointsInSeq(seq Sequence) bool {
 
 func (s lineString) reverse() Geometryer {
 	return s.Reverse()
+}
+
+func (s lineString) Dimension() int {
+	return 1
 }
 
 // Type returns the GeometryType for a LineString

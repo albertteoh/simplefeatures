@@ -15,11 +15,13 @@ import (
 type Point interface {
 	Geometryer
 
+	Boundary() GeometryCollection
 	XY() (XY, bool)
 	Force2D() Point
 	ForceCoordinatesType(newCType CoordinatesType) Point
 	Coordinates() (Coordinates, bool)
 	Reverse() Point
+	TransformXY(fn func(XY) XY, opts ...ConstructorOption) (Point, error)
 
 	appendWKTBody(dst []byte) []byte
 }
@@ -67,6 +69,10 @@ func newUncheckedPoint(c Coordinates) Point {
 // NewEmptyPoint creates a Point that is empty.
 func NewEmptyPoint(ctype CoordinatesType) Point {
 	return point{Coordinates{Type: ctype}, false}
+}
+
+func (p point) Dimension() int {
+	return 0
 }
 
 func (p point) Length() float64 {
@@ -137,8 +143,8 @@ func (p point) Envelope() Envelope {
 
 // Boundary returns the spatial boundary for this Point, which is always the
 // empty set. This is represented by the empty GeometryCollection.
-func (p point) Boundary() MultiLineString {
-	return multiLineString{}
+func (p point) Boundary() GeometryCollection {
+	return geometryCollection{}
 }
 
 // Value implements the database/sql/driver.Valuer interface by returning the

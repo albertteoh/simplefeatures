@@ -21,11 +21,17 @@ import (
 type MultiPolygon interface {
 	Geometryer
 
+	Area(opts ...AreaOption) float64
+	Boundary() MultiLineString
 	Reverse() MultiPolygon
 	ForceCoordinatesType(newCType CoordinatesType) MultiPolygon
 	NumPolygons() int
 	PolygonN(n int) Polygon
 	Coordinates() [][]Sequence
+	TransformXY(fn func(XY) XY, opts ...ConstructorOption) (MultiPolygon, error)
+
+	forceOrientation(forceCW bool) MultiPolygon
+	controlPoints() int
 }
 
 type multiPolygon struct {
@@ -189,6 +195,10 @@ func (m multiPolygon) reverse() Geometryer {
 
 func (m multiPolygon) Length() float64 {
 	return 0
+}
+
+func (m multiPolygon) Dimension() int {
+	return 2
 }
 
 // Type returns the GeometryType for a MultiPolygon

@@ -234,6 +234,10 @@ func (p polygon) InteriorRingN(n int) LineString {
 	return p.rings[n+1]
 }
 
+func (p polygon) Dimension() int {
+	return 2
+}
+
 // AsText returns the WKT (Well Known Text) representation of this geometry.
 func (p polygon) AsText() string {
 	return string(p.AppendWKT(nil))
