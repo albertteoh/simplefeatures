@@ -1,14 +1,13 @@
 package geom_test
 
 import (
-	"strconv"
 	"testing"
 
 	"github.com/peterstace/simplefeatures/geom"
 )
 
 func TestConvexHull(t *testing.T) {
-	for i, tt := range []struct {
+	for _, tt := range []struct {
 		input  string
 		output string
 	}{
@@ -197,7 +196,7 @@ func TestConvexHull(t *testing.T) {
 			output: `POLYGON((0 -0.1414213562373095,1.1414213562373097 1,0.9292893218813453 1.0707106781186548,0 -0.1414213562373095))`,
 		},
 	} {
-		t.Run(strconv.Itoa(i), func(t *testing.T) {
+		t.Run(tt.input, func(t *testing.T) {
 			t.Logf("input: %s", tt.input)
 			got := geomFromWKT(t, tt.input).ConvexHull()
 			expectGeomEq(t, got, geomFromWKT(t, tt.output), geom.IgnoreOrder)

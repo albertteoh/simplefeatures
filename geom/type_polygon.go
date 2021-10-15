@@ -58,7 +58,7 @@ type polygon struct {
 // common coordinate type of its rings.
 func NewPolygon(rings []LineString, opts ...ConstructorOption) (Polygon, error) {
 	if len(rings) == 0 {
-		return polygon{}, nil
+		return &polygon{}, nil
 	}
 
 	ctype := DimXYZM
@@ -73,11 +73,11 @@ func NewPolygon(rings []LineString, opts ...ConstructorOption) (Polygon, error) 
 	ctorOpts := newOptionSet(opts)
 	if err := validatePolygon(rings, ctorOpts); err != nil {
 		if ctorOpts.omitInvalid {
-			return polygon{}, nil
+			return &polygon{}, nil
 		}
-		return polygon{}, err
+		return &polygon{}, err
 	}
-	return polygon{rings, ctype}, nil
+	return &polygon{rings, ctype}, nil
 }
 
 func validatePolygon(rings []LineString, opts ctorOptionSet) error {
@@ -184,7 +184,7 @@ func (p polygon) reverse() Geometryer {
 }
 
 func (p polygon) getRings() []LineString {
-	return p.getRings()
+	return p.rings
 }
 
 func (p polygon) Length() float64 {
@@ -198,7 +198,7 @@ func (p polygon) Type() GeometryType {
 
 // AsGeometry converts this Polygon into a Geometry.
 func (p polygon) AsGeometry() Geometry {
-	return Geometry{p}
+	return Geometry{&p}
 }
 
 // ExteriorRing gives the exterior ring of the polygon boundary. If the polygon
@@ -366,7 +366,7 @@ func (p polygon) TransformXY(fn func(XY) XY, opts ...ConstructorOption) (Polygon
 			opts...,
 		)
 		if err != nil {
-			return polygon{}, wrapTransformed(err)
+			return &polygon{}, wrapTransformed(err)
 		}
 	}
 	poly, err := NewPolygon(transformed, opts...)
@@ -507,7 +507,7 @@ func triangleArea2(pt1, pt2, pt3 XY) float64 {
 func (p polygon) AsMultiPolygon() MultiPolygon {
 	var polys []Polygon
 	if !p.IsEmpty() {
-		polys = []Polygon{p}
+		polys = []Polygon{&p}
 	}
 	mp, err := NewMultiPolygon(polys)
 	if err != nil {
@@ -525,7 +525,7 @@ func (p polygon) Reverse() Polygon {
 	for i := range reversed {
 		reversed[i] = p.rings[i].Reverse()
 	}
-	return polygon{reversed, p.ctype}
+	return &polygon{reversed, p.ctype}
 }
 
 // CoordinatesType returns the CoordinatesType used to represent points making
@@ -541,7 +541,7 @@ func (p polygon) ForceCoordinatesType(newCType CoordinatesType) Polygon {
 	for i := range p.rings {
 		flatRings[i] = p.rings[i].ForceCoordinatesType(newCType)
 	}
-	return polygon{flatRings, newCType}
+	return &polygon{flatRings, newCType}
 }
 
 // Force2D returns a copy of the Polygon with Z and M values removed.
@@ -551,7 +551,7 @@ func (p polygon) Force2D() Polygon {
 
 // PointOnSurface returns a Point that lies inside the Polygon.
 func (p polygon) PointOnSurface() Point {
-	pt, _ := pointOnAreaSurface(p)
+	pt, _ := pointOnAreaSurface(&p)
 	return pt
 }
 
@@ -579,7 +579,7 @@ func (p polygon) forceOrientation(forceCW bool) Polygon {
 			orientedRings[i] = ring.Reverse()
 		}
 	}
-	return polygon{orientedRings, p.ctype}
+	return &polygon{orientedRings, p.ctype}
 }
 
 func (p polygon) controlPoints() int {

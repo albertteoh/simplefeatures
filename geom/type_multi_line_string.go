@@ -22,6 +22,7 @@ type MultiLineString interface {
 	LineStringN(int) LineString
 	Coordinates() []Sequence
 	TransformXY(fn func(XY) XY, opts ...ConstructorOption) (MultiLineString, error)
+	Dump() []LineString
 
 	asLines() []line
 	controlPoints() int
@@ -38,7 +39,7 @@ type multiLineString struct {
 // common coordinates type of its LineStrings.
 func NewMultiLineString(lines []LineString, opts ...ConstructorOption) MultiLineString {
 	if len(lines) == 0 {
-		return multiLineString{}
+		return &multiLineString{}
 	}
 
 	ctype := DimXYZM
@@ -51,7 +52,7 @@ func NewMultiLineString(lines []LineString, opts ...ConstructorOption) MultiLine
 		lines[i] = lines[i].ForceCoordinatesType(ctype)
 	}
 
-	return multiLineString{lines, ctype}
+	return &multiLineString{lines, ctype}
 }
 
 func (m multiLineString) Dimension() int {
@@ -65,7 +66,7 @@ func (m multiLineString) Type() GeometryType {
 
 // AsGeometry converts this MultiLineString into a Geometry.
 func (m multiLineString) AsGeometry() Geometry {
-	return Geometry{m}
+	return Geometry{&m}
 }
 
 // NumLineStrings gives the number of LineString elements in the
@@ -337,7 +338,7 @@ func (m multiLineString) TransformXY(fn func(XY) XY, opts ...ConstructorOption) 
 			opts...,
 		)
 		if err != nil {
-			return multiLineString{}, wrapTransformed(err)
+			return &multiLineString{}, wrapTransformed(err)
 		}
 	}
 	return NewMultiLineString(transformed, opts...), nil
@@ -377,7 +378,7 @@ func (m multiLineString) Reverse() MultiLineString {
 	for i := 0; i < len(m.lines); i++ {
 		linestrings[i] = m.lines[i].Reverse()
 	}
-	return multiLineString{linestrings, m.ctype}
+	return &multiLineString{linestrings, m.ctype}
 }
 
 // CoordinatesType returns the CoordinatesType used to represent points making
@@ -393,7 +394,7 @@ func (m multiLineString) ForceCoordinatesType(newCType CoordinatesType) MultiLin
 	for i := range m.lines {
 		flat[i] = m.lines[i].ForceCoordinatesType(newCType)
 	}
-	return multiLineString{flat, newCType}
+	return &multiLineString{flat, newCType}
 }
 
 func (m multiLineString) reverse() Geometryer {

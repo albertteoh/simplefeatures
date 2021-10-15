@@ -29,6 +29,9 @@ type MultiPolygon interface {
 	PolygonN(n int) Polygon
 	Coordinates() [][]Sequence
 	TransformXY(fn func(XY) XY, opts ...ConstructorOption) (MultiPolygon, error)
+	ForceCCW() MultiPolygon
+	ForceCW() MultiPolygon
+	Dump() []Polygon
 
 	forceOrientation(forceCW bool) MultiPolygon
 	controlPoints() int
@@ -46,7 +49,7 @@ type multiPolygon struct {
 // its Polygons.
 func NewMultiPolygon(polys []Polygon, opts ...ConstructorOption) (MultiPolygon, error) {
 	if len(polys) == 0 {
-		return multiPolygon{}, nil
+		return &multiPolygon{}, nil
 	}
 
 	ctype := DimXYZM
@@ -61,11 +64,11 @@ func NewMultiPolygon(polys []Polygon, opts ...ConstructorOption) (MultiPolygon, 
 	ctorOpts := newOptionSet(opts)
 	if err := validateMultiPolygon(polys, ctorOpts); err != nil {
 		if ctorOpts.omitInvalid {
-			return multiPolygon{}, nil
+			return &multiPolygon{}, nil
 		}
-		return multiPolygon{}, err
+		return &multiPolygon{}, err
 	}
-	return multiPolygon{polys, ctype}, nil
+	return &multiPolygon{polys, ctype}, nil
 }
 
 func validateMultiPolygon(polys []Polygon, opts ctorOptionSet) error {
@@ -208,7 +211,7 @@ func (m multiPolygon) Type() GeometryType {
 
 // AsGeometry converts this MultiPolygon into a Geometry.
 func (m multiPolygon) AsGeometry() Geometry {
-	return Geometry{m}
+	return Geometry{&m}
 }
 
 // NumPolygons gives the number of Polygon elements in the MultiPolygon.
@@ -358,7 +361,7 @@ func (m multiPolygon) TransformXY(fn func(XY) XY, opts ...ConstructorOption) (Mu
 	for i := range polys {
 		transformed, err := m.PolygonN(i).TransformXY(fn, opts...)
 		if err != nil {
-			return multiPolygon{}, wrapTransformed(err)
+			return &multiPolygon{}, wrapTransformed(err)
 		}
 		polys[i] = transformed
 	}
@@ -409,7 +412,7 @@ func (m multiPolygon) Reverse() MultiPolygon {
 	for i := 0; i < len(m.polys); i++ {
 		polys[i] = m.polys[i].Reverse()
 	}
-	return multiPolygon{polys, m.ctype}
+	return &multiPolygon{polys, m.ctype}
 }
 
 // CoordinatesType returns the CoordinatesType used to represent points making
@@ -425,7 +428,7 @@ func (m multiPolygon) ForceCoordinatesType(newCType CoordinatesType) MultiPolygo
 	for i := range m.polys {
 		flat[i] = m.polys[i].ForceCoordinatesType(newCType)
 	}
-	return multiPolygon{flat, newCType}
+	return &multiPolygon{flat, newCType}
 }
 
 // Force2D returns a copy of the MultiPolygon with Z and M values removed.
@@ -437,8 +440,9 @@ func (m multiPolygon) Force2D() MultiPolygon {
 func (m multiPolygon) PointOnSurface() Point {
 	var (
 		bestWidth float64
-		bestPoint Point
 	)
+	bestPoint := NewEmptyPoint(DimXY)
+
 	for i := 0; i < m.NumPolygons(); i++ {
 		poly := m.PolygonN(i)
 		point, bisectorWidth := pointOnAreaSurface(poly)
@@ -472,7 +476,7 @@ func (m multiPolygon) forceOrientation(forceCW bool) MultiPolygon {
 	for i, poly := range m.polys {
 		polys[i] = poly.forceOrientation(forceCW)
 	}
-	return multiPolygon{polys, m.ctype}
+	return &multiPolygon{polys, m.ctype}
 }
 
 func (m multiPolygon) controlPoints() int {

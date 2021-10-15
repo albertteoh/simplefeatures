@@ -8,6 +8,40 @@ import (
 	. "github.com/peterstace/simplefeatures/geom"
 )
 
+func newEmptyPoint(t testing.TB) Point {
+	return NewEmptyPoint(DimXY)
+}
+
+func newEmptyMultiPoint(t testing.TB) MultiPoint {
+	return NewMultiPoint([]Point{})
+}
+
+func newEmptyMultiLineString(t testing.TB) MultiLineString {
+	return NewMultiLineString([]LineString{})
+}
+
+func newEmptyGeometryCollection(t testing.TB) GeometryCollection {
+	return NewGeometryCollection([]Geometry{})
+}
+
+func newEmptyLineString(t testing.TB) LineString {
+	ls, err := NewLineString(NewSequence([]float64{}, DimXY))
+	expectNoErr(t, err)
+	return ls
+}
+
+func newEmptyPolygon(t testing.TB) Polygon {
+	poly, err := NewPolygon([]LineString{})
+	expectNoErr(t, err)
+	return poly
+}
+
+func newEmptyMultiPolygon(t testing.TB) MultiPolygon {
+	multipoly, err := NewMultiPolygon([]Polygon{})
+	expectNoErr(t, err)
+	return multipoly
+}
+
 func geomFromWKT(t testing.TB, wkt string) Geometry {
 	t.Helper()
 	geom, err := UnmarshalWKT(wkt)

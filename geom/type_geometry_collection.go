@@ -19,6 +19,7 @@ type GeometryCollection interface {
 	NumGeometries() int
 	GeometryN(n int) Geometry
 	TransformXY(fn func(XY) XY, opts ...ConstructorOption) (GeometryCollection, error)
+	Dump() []Geometry
 
 	walk(fn func(Geometry))
 	geometries() []Geometry
@@ -36,7 +37,7 @@ type geometryCollection struct {
 // child geometries.
 func NewGeometryCollection(geoms []Geometry, opts ...ConstructorOption) GeometryCollection {
 	if len(geoms) == 0 {
-		return geometryCollection{}
+		return &geometryCollection{}
 	}
 
 	ctype := DimXYZM
@@ -47,7 +48,7 @@ func NewGeometryCollection(geoms []Geometry, opts ...ConstructorOption) Geometry
 	for i := range geoms {
 		geoms[i] = geoms[i].ForceCoordinatesType(ctype)
 	}
-	return geometryCollection{geoms, ctype}
+	return &geometryCollection{geoms, ctype}
 }
 
 func (c geometryCollection) geometries() []Geometry {
@@ -61,7 +62,7 @@ func (c geometryCollection) Type() GeometryType {
 
 // AsGeometry converts this GeometryCollection into a Geometry.
 func (c geometryCollection) AsGeometry() Geometry {
-	return Geometry{c}
+	return Geometry{&c}
 }
 
 // NumGeometries gives the number of Geometry elements in the GeometryCollection.
@@ -160,7 +161,7 @@ func (c geometryCollection) Envelope() Envelope {
 // the GeometryCollection containing the boundaries of each child geometry.
 func (c geometryCollection) Boundary() GeometryCollection {
 	if c.IsEmpty() {
-		return c
+		return &c
 	}
 	var bounds []Geometry
 	for _, g := range c.geoms {
@@ -169,7 +170,7 @@ func (c geometryCollection) Boundary() GeometryCollection {
 			bounds = append(bounds, bound)
 		}
 	}
-	return geometryCollection{bounds, DimXY}
+	return &geometryCollection{bounds, DimXY}
 }
 
 // Value implements the database/sql/driver.Valuer interface by returning the
@@ -242,10 +243,10 @@ func (c geometryCollection) TransformXY(fn func(XY) XY, opts ...ConstructorOptio
 		var err error
 		transformed[i], err = c.geoms[i].TransformXY(fn, opts...)
 		if err != nil {
-			return geometryCollection{}, wrapTransformed(err)
+			return &geometryCollection{}, wrapTransformed(err)
 		}
 	}
-	return geometryCollection{transformed, c.ctype}, nil
+	return &geometryCollection{transformed, c.ctype}, nil
 }
 
 func (c geometryCollection) reverse() Geometryer {
@@ -256,14 +257,14 @@ func (c geometryCollection) reverse() Geometryer {
 // returns them in the original order.
 func (c geometryCollection) Reverse() GeometryCollection {
 	if c.IsEmpty() {
-		return c
+		return &c
 	}
 	var geoms []Geometry
 	for n := 0; n < c.NumGeometries(); n++ {
 		rev := c.GeometryN(n).Reverse()
 		geoms = append(geoms, rev)
 	}
-	return geometryCollection{geoms, c.ctype}
+	return &geometryCollection{geoms, c.ctype}
 }
 
 // Length of a GeometryCollection is the sum of the lengths of its parts.
@@ -417,7 +418,7 @@ func (c geometryCollection) ForceCoordinatesType(newCType CoordinatesType) Geome
 	for i := range c.geoms {
 		gs[i] = c.geoms[i].ForceCoordinatesType(newCType)
 	}
-	return geometryCollection{gs, newCType}
+	return &geometryCollection{gs, newCType}
 }
 
 // Force2D returns a copy of the GeometryCollection with Z and M values removed.
@@ -470,7 +471,7 @@ func (c geometryCollection) forceOrientation(forceCW bool) GeometryCollection {
 	for i, g := range c.geoms {
 		geoms[i] = g.forceOrientation(forceCW)
 	}
-	return geometryCollection{geoms, c.ctype}
+	return &geometryCollection{geoms, c.ctype}
 }
 
 // Dump breaks this GeometryCollection into its constituent non-multi types

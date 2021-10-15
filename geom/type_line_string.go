@@ -31,6 +31,7 @@ type LineString interface {
 
 	appendWKTBody(dst []byte) []byte
 	getSeq() Sequence
+	asLines() []line
 }
 
 type lineString struct {
@@ -44,27 +45,27 @@ func NewLineString(seq Sequence, opts ...ConstructorOption) (LineString, error) 
 	n := seq.Length()
 	ctorOpts := newOptionSet(opts)
 	if ctorOpts.skipValidations || n == 0 {
-		return lineString{seq}, nil
+		return &lineString{seq}, nil
 	}
 
 	// Valid non-empty LineStrings must have at least 2 *distinct* points.
 	if !hasAtLeast2DistinctPointsInSeq(seq) {
 		if ctorOpts.omitInvalid {
-			return lineString{}, nil
+			return &lineString{}, nil
 		}
-		return lineString{}, validationError{
+		return &lineString{}, validationError{
 			"non-empty linestring contains only one distinct XY value"}
 	}
 
 	// All XY values must be valid.
 	if err := seq.validate(); err != nil {
 		if ctorOpts.omitInvalid {
-			return lineString{}, nil
+			return &lineString{}, nil
 		}
-		return lineString{}, validationError{err.Error()}
+		return &lineString{}, validationError{err.Error()}
 	}
 
-	return lineString{seq}, nil
+	return &lineString{seq}, nil
 }
 
 func hasAtLeast2DistinctPointsInSeq(seq Sequence) bool {
@@ -96,7 +97,7 @@ func (s lineString) Type() GeometryType {
 
 // AsGeometry converts this LineString into a Geometry.
 func (s lineString) AsGeometry() Geometry {
-	return Geometry{s}
+	return Geometry{&s}
 }
 
 // StartPoint gives the first point of the LineString. If the LineString is
@@ -260,7 +261,7 @@ func (s lineString) Envelope() Envelope {
 // the MultiPoint containing the two endpoints of the LineString.
 func (s lineString) Boundary() MultiPoint {
 	if s.IsEmpty() || s.IsClosed() {
-		return multiPoint{}
+		return &multiPoint{}
 	}
 	return NewMultiPoint([]Point{
 		s.StartPoint(),
@@ -290,6 +291,10 @@ func (s *lineString) Scan(src interface{}) error {
 // AsBinary returns the WKB (Well Known Text) representation of the geometry.
 func (s lineString) AsBinary() []byte {
 	return s.AppendWKB(nil)
+}
+
+func (s lineString) DumpCoordinates() Sequence {
+	return s.Coordinates()
 }
 
 // AppendWKB appends the WKB (Well Known Text) representation of the geometry
@@ -354,7 +359,7 @@ func (s lineString) getSeq() Sequence {
 
 // Centroid gives the centroid of the coordinates of the line string.
 func (s lineString) Centroid() Point {
-	sumXY, sumLength := sumCentroidAndLengthOfLineString(s)
+	sumXY, sumLength := sumCentroidAndLengthOfLineString(&s)
 	if sumLength == 0 {
 		return NewEmptyPoint(DimXY)
 	}
@@ -379,12 +384,12 @@ func sumCentroidAndLengthOfLineString(s LineString) (sumXY XY, sumLength float64
 // AsMultiLineString is a convenience function that converts this LineString
 // into a MultiLineString.
 func (s lineString) AsMultiLineString() MultiLineString {
-	return NewMultiLineString([]LineString{s})
+	return NewMultiLineString([]LineString{&s})
 }
 
 // Reverse in the case of LineString outputs the coordinates in reverse order.
 func (s lineString) Reverse() LineString {
-	return lineString{s.seq.Reverse()}
+	return &lineString{s.seq.Reverse()}
 }
 
 // CoordinatesType returns the CoordinatesType used to represent points making
@@ -396,7 +401,7 @@ func (s lineString) CoordinatesType() CoordinatesType {
 // ForceCoordinatesType returns a new LineString with a different CoordinatesType. If a
 // dimension is added, then new values are populated with 0.
 func (s lineString) ForceCoordinatesType(newCType CoordinatesType) LineString {
-	return lineString{s.seq.ForceCoordinatesType(newCType)}
+	return &lineString{s.seq.ForceCoordinatesType(newCType)}
 }
 
 // Force2D returns a copy of the LineString with Z and M values removed.

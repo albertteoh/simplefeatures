@@ -1,12 +1,11 @@
 package geom_test
 
 import (
-	"strconv"
 	"testing"
 )
 
 func TestPointOnSurface(t *testing.T) {
-	for i, tt := range []struct {
+	for _, tt := range []struct {
 		inputWKT  string
 		outputWKT string
 	}{
@@ -75,7 +74,7 @@ func TestPointOnSurface(t *testing.T) {
 		{"GEOMETRYCOLLECTION(POLYGON((0 0,0 3,3 3,3 0,0 0),(1 1,1 2,2 2,2 1,1 1)),LINESTRING(1.4 1.4,1.6 1.6))", "POINT(0.5 1.5)"},
 		{"GEOMETRYCOLLECTION(LINESTRING(0 0,1 1),POINT(0.5 0.5))", "POINT(0 0)"},
 	} {
-		t.Run(strconv.Itoa(i), func(t *testing.T) {
+		t.Run(tt.outputWKT, func(t *testing.T) {
 			input := geomFromWKT(t, tt.inputWKT)
 			got := input.PointOnSurface()
 			t.Logf("input: %v", tt.inputWKT)

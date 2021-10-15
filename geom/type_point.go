@@ -22,8 +22,10 @@ type Point interface {
 	Coordinates() (Coordinates, bool)
 	Reverse() Point
 	TransformXY(fn func(XY) XY, opts ...ConstructorOption) (Point, error)
+	AsMultiPoint() MultiPoint
 
 	appendWKTBody(dst []byte) []byte
+	asXYs() []XY
 }
 
 type point struct {
@@ -41,7 +43,7 @@ func NewPoint(c Coordinates, opts ...ConstructorOption) (Point, error) {
 		if os.omitInvalid {
 			return NewEmptyPoint(c.Type), nil
 		}
-		return point{}, validationError{err.Error()}
+		return &point{}, validationError{err.Error()}
 	}
 	return newUncheckedPoint(c), nil
 }
@@ -63,12 +65,12 @@ func NewPoint(c Coordinates, opts ...ConstructorOption) (Point, error) {
 // overflow to +/- inf. However if control points are originally close to
 // infinity, many of the algorithms will be already broken in many other ways.
 func newUncheckedPoint(c Coordinates) Point {
-	return point{c, true}
+	return &point{c, true}
 }
 
 // NewEmptyPoint creates a Point that is empty.
 func NewEmptyPoint(ctype CoordinatesType) Point {
-	return point{Coordinates{Type: ctype}, false}
+	return &point{Coordinates{Type: ctype}, false}
 }
 
 func (p point) Dimension() int {
@@ -86,7 +88,7 @@ func (p point) Type() GeometryType {
 
 // AsGeometry converts this Point into a Geometry.
 func (p point) AsGeometry() Geometry {
-	return Geometry{p}
+	return Geometry{&p}
 }
 
 // XY gives the XY location of the point. The returned flag is set to true if
@@ -144,7 +146,7 @@ func (p point) Envelope() Envelope {
 // Boundary returns the spatial boundary for this Point, which is always the
 // empty set. This is represented by the empty GeometryCollection.
 func (p point) Boundary() GeometryCollection {
-	return geometryCollection{}
+	return &geometryCollection{}
 }
 
 // Value implements the database/sql/driver.Valuer interface by returning the
@@ -209,7 +211,7 @@ func (p point) MarshalJSON() ([]byte, error) {
 // TransformXY transforms this Point into another Point according to fn.
 func (p point) TransformXY(fn func(XY) XY, opts ...ConstructorOption) (Point, error) {
 	if !p.full {
-		return p, nil
+		return &p, nil
 	}
 	newC := p.coords
 	newC.XY = fn(newC.XY)
@@ -227,13 +229,13 @@ func (p point) reverse() Geometryer {
 
 // Reverse in the case of Point outputs the same point.
 func (p point) Reverse() Point {
-	return p
+	return &p
 }
 
 // AsMultiPoint is a convenience function that converts this Point into a
 // MultiPoint.
 func (p point) AsMultiPoint() MultiPoint {
-	return NewMultiPoint([]Point{p})
+	return NewMultiPoint([]Point{&p})
 }
 
 // CoordinatesType returns the CoordinatesType used to represent the Point.
@@ -254,7 +256,7 @@ func (p point) ForceCoordinatesType(newCType CoordinatesType) Point {
 		p.coords.M = 0
 	}
 	p.coords.Type = newCType
-	return p
+	return &p
 }
 
 // Force2D returns a copy of the Point with Z and M values removed.

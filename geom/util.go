@@ -13,7 +13,7 @@ func max(a, b int) int {
 }
 
 func rank(g Geometry) int {
-	switch g.gtype {
+	switch g.Type() {
 	case TypePoint:
 		return 1
 	case TypeLineString:
@@ -29,7 +29,7 @@ func rank(g Geometry) int {
 	case TypeGeometryCollection:
 		return 7
 	default:
-		panic(fmt.Sprintf("unknown geometry tag: %s", g.gtype))
+		panic(fmt.Sprintf("unknown geometry tag: %s", g.Type()))
 	}
 }
 

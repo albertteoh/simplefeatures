@@ -18,6 +18,9 @@ type MultiPoint interface {
 	Force2D() MultiPoint
 	Boundary() GeometryCollection
 	TransformXY(fn func(XY) XY, opts ...ConstructorOption) (MultiPoint, error)
+	Dump() []Point
+
+	asXYs() []XY
 }
 
 type multiPoint struct {
@@ -30,7 +33,7 @@ type multiPoint struct {
 // type of the MultiPoint is the lowest common coordinates type of its Points.
 func NewMultiPoint(pts []Point, opts ...ConstructorOption) MultiPoint {
 	if len(pts) == 0 {
-		return multiPoint{}
+		return &multiPoint{}
 	}
 
 	ctype := DimXYZM
@@ -39,7 +42,7 @@ func NewMultiPoint(pts []Point, opts ...ConstructorOption) MultiPoint {
 	}
 
 	forced := forceCoordinatesTypeOfPointSlice(pts, ctype)
-	return multiPoint{forced, ctype}
+	return &multiPoint{forced, ctype}
 }
 
 func (m multiPoint) reverse() Geometryer {
@@ -57,7 +60,7 @@ func (m multiPoint) Type() GeometryType {
 
 // AsGeometry converts this MultiPoint into a Geometry.
 func (m multiPoint) AsGeometry() Geometry {
-	return Geometry{m}
+	return Geometry{&m}
 }
 
 // NumPoints gives the number of element points making up the MultiPoint.
@@ -133,7 +136,7 @@ func (m multiPoint) Envelope() Envelope {
 // Boundary returns the spatial boundary for this MultiPoint, which is always
 // the empty set. This is represented by the empty GeometryCollection.
 func (m multiPoint) Boundary() GeometryCollection {
-	return geometryCollection{}
+	return &geometryCollection{}
 }
 
 // Value implements the database/sql/driver.Valuer interface by returning the
@@ -223,7 +226,7 @@ func (m multiPoint) TransformXY(fn func(XY) XY, opts ...ConstructorOption) (Mult
 			var err error
 			txPoints[i], err = NewPoint(c, opts...)
 			if err != nil {
-				return multiPoint{}, err
+				return &multiPoint{}, err
 			}
 		} else {
 			txPoints[i] = pt
@@ -252,7 +255,7 @@ func (m multiPoint) Centroid() Point {
 // Reverse in the case of MultiPoint outputs each component point in their
 // original order.
 func (m multiPoint) Reverse() MultiPoint {
-	return m
+	return &m
 }
 
 // CoordinatesType returns the CoordinatesType used to represent points making
@@ -265,7 +268,7 @@ func (m multiPoint) CoordinatesType() CoordinatesType {
 // dimension is added, then new values are populated with 0.
 func (m multiPoint) ForceCoordinatesType(newCType CoordinatesType) MultiPoint {
 	newPoints := forceCoordinatesTypeOfPointSlice(m.points, newCType)
-	return multiPoint{newPoints, newCType}
+	return &multiPoint{newPoints, newCType}
 }
 
 // forceCoordinatesTypeOfPointSlice creates a new slice of Points, each forced

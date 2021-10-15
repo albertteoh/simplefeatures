@@ -22,6 +22,7 @@ type Geometryer interface {
 	PointOnSurface() Point
 	DumpCoordinates() Sequence
 	Summary() string
+	Scan(src interface{}) error
 
 	// Length gives the length of a Line, LineString, or MultiLineString
 	// or the sum of the lengths of the components of a GeometryCollection.
@@ -88,26 +89,30 @@ func (t GeometryType) String() string {
 }
 
 // Type returns a string representation of the geometry's type.
-//func (g Geometry) Type() GeometryType {
-//	switch g.gtype {
-//	case TypeGeometryCollection:
-//		return g.AsGeometryCollection().Type()
-//	case TypePoint:
-//		return g.AsPoint().Type()
-//	case TypeLineString:
-//		return g.AsLineString().Type()
-//	case TypePolygon:
-//		return g.AsPolygon().Type()
-//	case TypeMultiPoint:
-//		return g.AsMultiPoint().Type()
-//	case TypeMultiLineString:
-//		return g.AsMultiLineString().Type()
-//	case TypeMultiPolygon:
-//		return g.AsMultiPolygon().Type()
-//	default:
-//		panic("unknown geometry: " + g.gtype.String())
-//	}
-//}
+func (g Geometry) Type() GeometryType {
+	if g.Geometryer != nil {
+		return g.Geometryer.Type()
+	}
+	return TypeGeometryCollection
+	//switch g.gtype {
+	//case TypeGeometryCollection:
+	//	return g.AsGeometryCollection().Type()
+	//case TypePoint:
+	//	return g.AsPoint().Type()
+	//case TypeLineString:
+	//	return g.AsLineString().Type()
+	//case TypePolygon:
+	//	return g.AsPolygon().Type()
+	//case TypeMultiPoint:
+	//	return g.AsMultiPoint().Type()
+	//case TypeMultiLineString:
+	//	return g.AsMultiLineString().Type()
+	//case TypeMultiPolygon:
+	//	return g.AsMultiPolygon().Type()
+	//default:
+	//	panic("unknown geometry: " + g.gtype.String())
+	//}
+}
 
 // IsGeometryCollection return true iff the Geometry is a GeometryCollection geometry.
 func (g Geometry) IsGeometryCollection() bool { return g.Type() == TypeGeometryCollection }
@@ -140,11 +145,11 @@ func (g Geometry) check(gtype GeometryType) {
 // if the geometry is not a GeometryCollection.
 func (g Geometry) AsGeometryCollection() GeometryCollection {
 	//g.check(TypeGeometryCollection)
-	//if g.ptr == nil {
-	//	// Special case so that the zero Geometry value is interpreted as an
-	//	// empty GeometryCollection.
-	//	return geometryCollection{}
-	//}
+	if g.Geometryer == nil {
+		// Special case so that the zero Geometry value is interpreted as an
+		// empty GeometryCollection.
+		return &geometryCollection{}
+	}
 	//return *(*GeometryCollection)(g.ptr)
 	if v, ok := g.Geometryer.(GeometryCollection); ok {
 		return v
@@ -413,6 +418,9 @@ func (g Geometry) Dimension() int {
 // IsEmpty returns true if this geometry is empty. Collection types are empty
 // if they have zero elements or only contain empty elements.
 func (g Geometry) IsEmpty() bool {
+	if g.Type() == TypeGeometryCollection {
+		return (&geometryCollection{}).IsEmpty()
+	}
 	//switch g.gtype {
 	//case TypeGeometryCollection:
 	//	return g.AsGeometryCollection().IsEmpty()

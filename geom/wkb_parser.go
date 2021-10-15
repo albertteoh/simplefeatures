@@ -165,23 +165,23 @@ func (p *wkbParser) parsePoint(ctype CoordinatesType) (Point, error) {
 	var err error
 	c.X, err = p.parseFloat64()
 	if err != nil {
-		return point{}, err
+		return &point{}, err
 	}
 	c.Y, err = p.parseFloat64()
 	if err != nil {
-		return point{}, err
+		return &point{}, err
 	}
 
 	if ctype == DimXYZ || ctype == DimXYZM {
 		c.Z, err = p.parseFloat64()
 		if err != nil {
-			return point{}, err
+			return &point{}, err
 		}
 	}
 	if ctype == DimXYM || ctype == DimXYZM {
 		c.M, err = p.parseFloat64()
 		if err != nil {
-			return point{}, err
+			return &point{}, err
 		}
 	}
 
@@ -190,7 +190,7 @@ func (p *wkbParser) parsePoint(ctype CoordinatesType) (Point, error) {
 		return point{}.ForceCoordinatesType(ctype), nil
 	}
 	if math.IsNaN(c.X) || math.IsNaN(c.Y) {
-		return point{}, wkbSyntaxError{"point contains mixed NaN values"}
+		return &point{}, wkbSyntaxError{"point contains mixed NaN values"}
 	}
 	return NewPoint(c, p.opts...)
 }
@@ -198,12 +198,12 @@ func (p *wkbParser) parsePoint(ctype CoordinatesType) (Point, error) {
 func (p *wkbParser) parseLineString(ctype CoordinatesType) (LineString, error) {
 	n, err := p.parseUint32()
 	if err != nil {
-		return lineString{}, err
+		return &lineString{}, err
 	}
 	floats := make([]float64, int(n)*ctype.Dimension())
 
 	if len(p.body) < 8*len(floats) {
-		return lineString{}, wkbSyntaxError{"unexpected EOF"}
+		return &lineString{}, wkbSyntaxError{"unexpected EOF"}
 	}
 
 	var seqData []byte
@@ -246,7 +246,7 @@ func flipEndianessStride8(p []byte) {
 func (p *wkbParser) parsePolygon(ctype CoordinatesType) (Polygon, error) {
 	n, err := p.parseUint32()
 	if err != nil {
-		return polygon{}, err
+		return &polygon{}, err
 	}
 	if n == 0 {
 		return polygon{}.ForceCoordinatesType(ctype), nil
@@ -255,7 +255,7 @@ func (p *wkbParser) parsePolygon(ctype CoordinatesType) (Polygon, error) {
 	for i := range rings {
 		rings[i], err = p.parseLineString(ctype)
 		if err != nil {
-			return polygon{}, err
+			return &polygon{}, err
 		}
 	}
 	return NewPolygon(rings, p.opts...)
@@ -264,7 +264,7 @@ func (p *wkbParser) parsePolygon(ctype CoordinatesType) (Polygon, error) {
 func (p *wkbParser) parsemultiPoint(ctype CoordinatesType) (MultiPoint, error) {
 	n, err := p.parseUint32()
 	if err != nil {
-		return multiPoint{}, err
+		return &multiPoint{}, err
 	}
 	if n == 0 {
 		return multiPoint{}.ForceCoordinatesType(ctype), nil
@@ -273,10 +273,10 @@ func (p *wkbParser) parsemultiPoint(ctype CoordinatesType) (MultiPoint, error) {
 	for i := uint32(0); i < n; i++ {
 		geom, err := p.inner()
 		if err != nil {
-			return multiPoint{}, err
+			return &multiPoint{}, err
 		}
 		if !geom.IsPoint() {
-			return multiPoint{}, wkbSyntaxError{"multiPoint contains non-Point element"}
+			return &multiPoint{}, wkbSyntaxError{"multiPoint contains non-Point element"}
 		}
 		pts[i] = geom.AsPoint()
 	}
@@ -286,7 +286,7 @@ func (p *wkbParser) parsemultiPoint(ctype CoordinatesType) (MultiPoint, error) {
 func (p *wkbParser) parsemultiLineString(ctype CoordinatesType) (MultiLineString, error) {
 	n, err := p.parseUint32()
 	if err != nil {
-		return multiLineString{}, err
+		return &multiLineString{}, err
 	}
 	if n == 0 {
 		return multiLineString{}.ForceCoordinatesType(ctype), nil
@@ -295,10 +295,10 @@ func (p *wkbParser) parsemultiLineString(ctype CoordinatesType) (MultiLineString
 	for i := uint32(0); i < n; i++ {
 		geom, err := p.inner()
 		if err != nil {
-			return multiLineString{}, err
+			return &multiLineString{}, err
 		}
 		if !geom.IsLineString() {
-			return multiLineString{}, wkbSyntaxError{"multiLineString contains non-LineString element"}
+			return &multiLineString{}, wkbSyntaxError{"multiLineString contains non-LineString element"}
 		}
 		lss[i] = geom.AsLineString()
 	}
@@ -308,7 +308,7 @@ func (p *wkbParser) parsemultiLineString(ctype CoordinatesType) (MultiLineString
 func (p *wkbParser) parsemultiPolygon(ctype CoordinatesType) (MultiPolygon, error) {
 	n, err := p.parseUint32()
 	if err != nil {
-		return multiPolygon{}, err
+		return &multiPolygon{}, err
 	}
 	if n == 0 {
 		return multiPolygon{}.ForceCoordinatesType(ctype), nil
@@ -317,10 +317,10 @@ func (p *wkbParser) parsemultiPolygon(ctype CoordinatesType) (MultiPolygon, erro
 	for i := uint32(0); i < n; i++ {
 		geom, err := p.inner()
 		if err != nil {
-			return multiPolygon{}, err
+			return &multiPolygon{}, err
 		}
 		if !geom.IsPolygon() {
-			return multiPolygon{}, wkbSyntaxError{"multiPolygon contains non-Polygon element"}
+			return &multiPolygon{}, wkbSyntaxError{"multiPolygon contains non-Polygon element"}
 		}
 		polys[i] = geom.AsPolygon()
 	}
@@ -330,7 +330,7 @@ func (p *wkbParser) parsemultiPolygon(ctype CoordinatesType) (MultiPolygon, erro
 func (p *wkbParser) parseGeometryCollection(ctype CoordinatesType) (GeometryCollection, error) {
 	n, err := p.parseUint32()
 	if err != nil {
-		return geometryCollection{}, err
+		return &geometryCollection{}, err
 	}
 	if n == 0 {
 		return geometryCollection{}.ForceCoordinatesType(ctype), nil
@@ -339,7 +339,7 @@ func (p *wkbParser) parseGeometryCollection(ctype CoordinatesType) (GeometryColl
 	for i := uint32(0); i < n; i++ {
 		geoms[i], err = p.inner()
 		if err != nil {
-			return geometryCollection{}, err
+			return &geometryCollection{}, err
 		}
 	}
 	return NewGeometryCollection(geoms, p.opts...), nil

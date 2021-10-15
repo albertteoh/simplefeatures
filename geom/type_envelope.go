@@ -127,7 +127,7 @@ func (e Envelope) AsGeometry() Geometry {
 	if err != nil {
 		panic(fmt.Sprintf("constructing geometry from envelope: %v", err))
 	}
-	poly, err := NewPolygon([]lineString{ls})
+	poly, err := NewPolygon([]LineString{ls})
 	if err != nil {
 		panic(fmt.Sprintf("constructing geometry from envelope: %v", err))
 	}
@@ -137,7 +137,7 @@ func (e Envelope) AsGeometry() Geometry {
 // Min returns the point in the envelope with the minimum X and Y values.
 func (e Envelope) Min() Point {
 	if e.IsEmpty() {
-		return Point{}
+		return &point{}
 	}
 	return e.min().asUncheckedPoint()
 }
@@ -145,7 +145,7 @@ func (e Envelope) Min() Point {
 // Max returns the point in the envelope with the maximum X and Y values.
 func (e Envelope) Max() Point {
 	if e.IsEmpty() {
-		return Point{}
+		return &point{}
 	}
 	return e.max().asUncheckedPoint()
 }
@@ -220,7 +220,7 @@ func (e Envelope) Intersects(o Envelope) bool {
 // Center returns the center point of the envelope.
 func (e Envelope) Center() Point {
 	if e.IsEmpty() {
-		return Point{}
+		return &point{}
 	}
 	return e.min().
 		Add(e.max()).

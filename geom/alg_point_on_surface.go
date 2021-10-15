@@ -6,7 +6,10 @@ import (
 )
 
 func newNearestPointAccumulator(target Point) nearestPointAccumulator {
-	return nearestPointAccumulator{target: target}
+	return nearestPointAccumulator{
+		target: target,
+		point:  NewEmptyPoint(DimXY),
+	}
 }
 
 // nearestPointAccumulator keeps track of the point within a group of
@@ -59,7 +62,7 @@ func pointOnAreaSurface(poly Polygon) (Point, float64) {
 	env := poly.Envelope()
 	mid, ok := env.Center().XY()
 	if !ok {
-		return point{}, 0
+		return &point{}, 0
 	}
 	midY := mid.Y
 
@@ -85,7 +88,7 @@ func pointOnAreaSurface(poly Polygon) (Point, float64) {
 	// Create bisector.
 	envMin, envMax, ok := env.MinMaxXYs()
 	if !ok {
-		return point{}, 0
+		return &point{}, 0
 	}
 
 	bisector := line{
