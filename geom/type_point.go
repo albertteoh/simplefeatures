@@ -19,6 +19,7 @@ type Point interface {
 	Force2D() Point
 	ForceCoordinatesType(newCType CoordinatesType) Point
 	Coordinates() (Coordinates, bool)
+	Reverse() Point
 
 	appendWKTBody(dst []byte) []byte
 }
@@ -214,9 +215,13 @@ func (p point) Centroid() Point {
 	return p.Force2D()
 }
 
+func (p point) reverse() Geometryer {
+	return p.Reverse()
+}
+
 // Reverse in the case of Point outputs the same point.
-func (p point) Reverse() Geometry {
-	return p.AsGeometry()
+func (p point) Reverse() Point {
+	return p
 }
 
 // AsMultiPoint is a convenience function that converts this Point into a
